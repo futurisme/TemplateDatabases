@@ -2032,8 +2032,15 @@
                 showToast('Serve via HTTP', 'Open the frontend using a local HTTP server (npx http-server . -p 3000)', 'info');
             }
 
-            // Initialize WebSocket
-            initWebSocket();
+            // Initialize WebSocket (wrapped to surface thrown errors)
+            try {
+                initWebSocket();
+            } catch (err) {
+                console.error('[APP] initWebSocket error:', err);
+                const sub = document.getElementById('loadingSubtext');
+                if (sub) sub.textContent = `Initialization error: ${err?.message || err}`;
+                if (typeof showToast === 'function') showToast('Init Error', String(err), 'error');
+            }
             
             // Start keep-alive ping when connected
             const originalHandleConnect = handleConnect;
