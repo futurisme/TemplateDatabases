@@ -1388,7 +1388,7 @@
         };
 
         // ======= ICONS - Roblox Studio Explorer Style =======
-        const ICONS = {
+        window.ICONS = {
             // Element Icons
             part: '<g fill="currentColor"><rect x="2" y="3" width="12" height="10" rx="1" ry="1" opacity="0.9"/><path d="M3 4h10v8H3z" fill="var(--bg-secondary)" opacity="0.5"/></g>',
             script: '<g fill="currentColor"><path d="M3 2h8l2 2v10H3V2z" fill-opacity="0.85"/><path d="M5 6h6M5 8h4M5 10h6" stroke="var(--bg-secondary)" stroke-width="0.8" opacity="0.6"/></g>',
@@ -1415,6 +1415,9 @@
             chevron_down: '<path d="M2 5l6 6 6-6" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>',
             close: '<path d="M2 2l12 12M14 2L2 14" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>' 
         };
+        
+        // Ensure ICONS is accessible (global fallback)
+        const ICONS = window.ICONS;
 
         // Allow easy local override (dev) via hostname or query param
         function handleConnect() {
