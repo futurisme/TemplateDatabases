@@ -1312,6 +1312,17 @@
             expandedItems: new Set()
         };
 
+        // ======= ICONS (SVG snippets) =======
+        const ICONS = {
+            part: '<path d="M2 2h12v12H2z" fill="currentColor"/>',
+            script: '<path d="M3 2h6l4 4v8H3z" fill="currentColor"/>',
+            local: '<path d="M3 2h10v12H3z" fill="currentColor"/><path d="M7 2v4" stroke="currentColor" stroke-width="1"/>',
+            module: '<path d="M2 4h12v8H2z" rx="1" fill="currentColor"/>',
+            arrow: '<path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+            folder: '<path d="M2 5h5l2 2h5v6H2z" fill="currentColor"/>',
+            script_small: '<path d="M3 2h6l2 2v8H3z" fill="currentColor"/>'
+        };
+
         // Allow easy local override (dev) via hostname or query param
         function handleConnect() {
             state.isConnected = true;
