@@ -1389,31 +1389,31 @@
 
         // ======= ICONS - Roblox Studio Explorer Style =======
         window.ICONS = {
-            // Element Icons - Using fixed colors for reliable rendering
-            part: '<g><rect x="2" y="3" width="12" height="10" rx="1" ry="1" fill="#9ca3af" opacity="0.9"/><path d="M3 4h10v8H3z" fill="#1a1f35" opacity="0.6"/></g>',
-            script: '<g><path d="M3 2h8l2 2v10H3V2z" fill="#9ca3af" fill-opacity="0.85"/><path d="M5 6h6M5 8h4M5 10h6" stroke="#1a1f35" stroke-width="0.8" opacity="0.7"/></g>',
-            local: '<g><path d="M3 2h8l2 2v10H3V2z" fill="#9ca3af" fill-opacity="0.85"/><path d="M6 5v6M8 5v6" stroke="#9ca3af" stroke-width="0.8" opacity="0.6"/></g>',
-            module: '<g><path d="M2 4h12v8H2z" rx="0.5" fill="#9ca3af" fill-opacity="0.85"/><rect x="3" y="5" width="4" height="6" fill="#1a1f35" opacity="0.5"/><rect x="9" y="5" width="3" height="6" fill="#1a1f35" opacity="0.4"/></g>',
-            folder: '<g><path d="M1 5h14v9H1z" rx="0.5" fill="#9ca3af" fill-opacity="0.9"/><path d="M2 6h6l3-3h7v10H2z" fill="#1a1f35" opacity="0.5"/><rect x="2" y="5" width="5" height="3" fill="#9ca3af" opacity="0.7"/></g>',
-            arrow: '<path d="M6 3l5 5-5 5" stroke="#9ca3af" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>',
+            // Element Icons - Color-coded by type
+            part: '<g><rect x="2" y="3" width="12" height="10" rx="1" ry="1" fill="#ef4444" opacity="0.85"/><path d="M3 4h10v8H3z" fill="#991b1b" opacity="0.5"/></g>',
+            script: '<g><path d="M3 2h8l2 2v10H3V2z" fill="#3b82f6" fill-opacity="0.85"/><path d="M5 6h6M5 8h4M5 10h6" stroke="#1e40af" stroke-width="0.8" opacity="0.7"/></g>',
+            local: '<g><path d="M3 2h8l2 2v10H3V2z" fill="#06b6d4" fill-opacity="0.85"/><path d="M6 5v6M8 5v6" stroke="#0891b2" stroke-width="0.8" opacity="0.7"/></g>',
+            module: '<g><path d="M2 4h12v8H2z" rx="0.5" fill="#8b5cf6" fill-opacity="0.85"/><rect x="3" y="5" width="4" height="6" fill="#5b21b6" opacity="0.6"/><rect x="9" y="5" width="3" height="6" fill="#5b21b6" opacity="0.5"/></g>',
+            folder: '<g><path d="M1 5h14v9H1z" rx="0.5" fill="#f59e0b" fill-opacity="0.85"/><path d="M2 6h6l3-3h7v10H2z" fill="#b45309" opacity="0.5"/><rect x="2" y="5" width="5" height="3" fill="#d97706" opacity="0.7"/></g>',
+            arrow: '<path d="M6 3l5 5-5 5" stroke="#6b7280" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>',
             
-            // Service Icons
-            model: '<g><rect x="2" y="3" width="6" height="6" fill="#9ca3af" opacity="0.8"/><rect x="9" y="3" width="5" height="6" fill="#9ca3af" opacity="0.6"/><rect x="2" y="10" width="6" height="3" fill="#9ca3af" opacity="0.7"/><rect x="9" y="10" width="5" height="3" fill="#9ca3af" opacity="0.5"/></g>',
-            workspace: '<g><path d="M2 4h12v8H2z" fill="#9ca3af" fill-opacity="0.7"/><path d="M4 5v6M8 5v6M12 5v6" stroke="#1a1f35" stroke-width="0.8" opacity="0.6"/></g>',
-            terrain: '<g><path d="M2 4l4-2l4 2l4-2v10H2z" fill="#9ca3af" fill-opacity="0.8"/><path d="M2 7l3-2l3 2l3-2l3 2" stroke="#1a1f35" stroke-width="0.7" fill="none" opacity="0.5"/></g>',
+            // Service Icons - Green colors
+            model: '<g><rect x="2" y="3" width="6" height="6" fill="#10b981" opacity="0.85"/><rect x="9" y="3" width="5" height="6" fill="#059669" opacity="0.7"/><rect x="2" y="10" width="6" height="3" fill="#047857" opacity="0.6"/><rect x="9" y="10" width="5" height="3" fill="#059669" opacity="0.5"/></g>',
+            workspace: '<g><path d="M2 4h12v8H2z" fill="#10b981" fill-opacity="0.85"/><path d="M4 5v6M8 5v6M12 5v6" stroke="#059669" stroke-width="0.8" opacity="0.7"/></g>',
+            terrain: '<g><path d="M2 4l4-2l4 2l4-2v10H2z" fill="#84cc16" fill-opacity="0.8"/><path d="M2 7l3-2l3 2l3-2l3 2" stroke="#65a30d" stroke-width="0.7" fill="none" opacity="0.7"/></g>',
             
-            // Property Icons
-            property: '<g><path d="M3 4h10v8H3z" rx="1" fill="#9ca3af" fill-opacity="0.75"/><path d="M5 7h5M5 9h3" stroke="#1a1f35" stroke-width="0.8" opacity="0.7"/></g>',
-            value: '<g><circle cx="8" cy="8" r="5" fill="#9ca3af" fill-opacity="0.8"/><circle cx="8" cy="8" r="3" fill="#1a1f35" opacity="0.5"/></g>',
+            // Property Icons - Pink/Red colors
+            property: '<g><path d="M3 4h10v8H3z" rx="1" fill="#ec4899" fill-opacity="0.75"/><path d="M5 7h5M5 9h3" stroke="#be185d" stroke-width="0.8" opacity="0.7"/></g>',
+            value: '<g><circle cx="8" cy="8" r="5" fill="#ec4899" fill-opacity="0.8"/><circle cx="8" cy="8" r="3" fill="#be185d" opacity="0.6"/></g>',
             
-            // Special Icons
-            luau: '<g><path d="M3 2h10v12H3z" rx="1" fill="#9ca3af" fill-opacity="0.85"/><path d="M5 5h6M5 7h4M5 9h6" stroke="#1a1f35" stroke-width="0.8" opacity="0.7"/></g>',
-            plugin: '<g><rect x="3" y="3" width="4" height="4" fill="#9ca3af" opacity="0.85"/><rect x="9" y="3" width="4" height="4" fill="#9ca3af" opacity="0.75"/><rect x="3" y="9" width="4" height="4" fill="#9ca3af" opacity="0.75"/><rect x="9" y="9" width="4" height="4" fill="#9ca3af" opacity="0.65"/></g>',
+            // Special Icons - Blue/Purple
+            luau: '<g><path d="M3 2h10v12H3z" rx="1" fill="#3b82f6" fill-opacity="0.85"/><path d="M5 5h6M5 7h4M5 9h6" stroke="#1e40af" stroke-width="0.8" opacity="0.7"/></g>',
+            plugin: '<g><rect x="3" y="3" width="4" height="4" fill="#8b5cf6" opacity="0.85"/><rect x="9" y="3" width="4" height="4" fill="#7c3aed" opacity="0.75"/><rect x="3" y="9" width="4" height="4" fill="#7c3aed" opacity="0.75"/><rect x="9" y="9" width="4" height="4" fill="#6d28d9" opacity="0.65"/></g>',
             
-            // UI Navigation
-            chevron_right: '<path d="M5 2l6 6-6 6" stroke="#9ca3af" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>',
-            chevron_down: '<path d="M2 5l6 6 6-6" stroke="#9ca3af" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>',
-            close: '<path d="M2 2l12 12M14 2L2 14" stroke="#9ca3af" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.8"/>' 
+            // UI Navigation - Gray
+            chevron_right: '<path d="M5 2l6 6-6 6" stroke="#6b7280" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>',
+            chevron_down: '<path d="M2 5l6 6 6-6" stroke="#6b7280" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>',
+            close: '<path d="M2 2l12 12M14 2L2 14" stroke="#6b7280" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.8"/>' 
         };
         
         // Ensure ICONS is accessible (global fallback)
