@@ -1265,6 +1265,26 @@
             CONNECTION_TIMEOUT: 10000
         };
 
+        // Allow easy local override (dev) via hostname or query param
+        (function resolveBackendUrl() {
+            try {
+                const params = new URLSearchParams(location.search);
+                const q = params.get('backend');
+                if (q) {
+                    CONFIG.BACKEND_URL = q.endsWith('/') ? q : q + '/';
+                    console.info('[CONFIG] Backend URL overridden via query param:', CONFIG.BACKEND_URL);
+                    return;
+                }
+
+                if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                    CONFIG.BACKEND_URL = 'http://localhost:3001/';
+                    console.info('[CONFIG] Using local backend URL:', CONFIG.BACKEND_URL);
+                }
+            } catch (e) {
+                console.warn('[CONFIG] Failed to resolve backend override:', e);
+            }
+        })();
+
         // ========== STATE MANAGEMENT ==========
         const state = {
             socket: null,
@@ -1311,9 +1331,35 @@
         };
 
         // ========== WEBSOCKET CONNECTION ==========
-        function initWebSocket() {
+        async function initWebSocket() {
             console.log('[WS] Connecting to:', CONFIG.BACKEND_URL);
-            
+
+            // Quick health check to detect unreachable backend / CORS issues before opening socket
+            let backendReachable = false;
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 4000);
+                const res = await fetch(CONFIG.BACKEND_URL + 'health', { signal: controller.signal, mode: 'cors' });
+                clearTimeout(timeout);
+                if (res.ok) {
+                    backendReachable = true;
+                    console.log('[WS] Backend health OK');
+                } else {
+                    console.warn('[WS] Backend health check returned non-OK:', res.status);
+                }
+            } catch (err) {
+                console.warn('[WS] Backend health check failed:', err && err.message ? err.message : err);
+            }
+
+            // If health check failed, inform user in UI but still attempt a socket connection
+            const subtextEl = document.getElementById('loadingSubtext');
+            if (!backendReachable) {
+                subtextEl.textContent = `Cannot reach ${CONFIG.BACKEND_URL} (health). Trying WebSocket connection; check CORS or network.`;
+            } else {
+                subtextEl.textContent = `Backend reachable. Establishing WebSocket...`;
+            }
+
+            // Use conservative timeouts aligned with backend recommendations (faster failure detection)
             state.socket = io(CONFIG.BACKEND_URL, {
                 reconnection: CONFIG.AUTO_RECONNECT,
                 reconnectionDelay: CONFIG.RECONNECT_DELAY,
@@ -1322,9 +1368,11 @@
                 transports: ['websocket', 'polling'],
                 upgrade: true,
                 rememberUpgrade: true,
-                pingTimeout: 25000,
-                pingInterval: 10000,
-                skipInitializeEngine: false
+                // Faster detection to avoid long "Connecting..." states
+                pingTimeout: 10000,
+                pingInterval: 5000,
+                connectTimeout: 5000,
+                upgradeTimeout: 5000
             });
 
             // Connection Events
@@ -1334,24 +1382,27 @@
             state.socket.on('game-update', handleGameUpdate);
             state.socket.on('connection-ready', handleConnectionReady);
             state.socket.on('pong', handlePong);
-            
+
             // Reconnection events
             state.socket.on('reconnect_attempt', () => {
                 console.log('[WS] Attempting reconnection...');
                 updateConnectionStatus(false);
+                document.getElementById('loadingSubtext').textContent = 'Reconnecting...';
             });
-            
+
             state.socket.on('reconnect', () => {
                 console.log('[WS] Reconnected successfully');
                 handleConnect();
             });
-            
+
             state.socket.on('reconnect_error', (error) => {
                 console.error('[WS] Reconnection error:', error);
+                document.getElementById('loadingSubtext').textContent = `Reconnect error: ${error?.message || error}`;
             });
-            
+
             state.socket.on('reconnect_failed', () => {
                 console.error('[WS] Failed to reconnect');
+                document.getElementById('loadingSubtext').textContent = 'Failed to reconnect after multiple attempts.';
             });
         }
 
@@ -1397,10 +1448,20 @@
         function handleConnectError(error) {
             console.error('[WS] Connection error:', error);
             updateConnectionStatus(false);
-            
-            // Only show error toast if it's critical
-            if (error?.type === 'TransportError') {
-                console.log('[WS] Transport error, will try polling...');
+            const subtextEl = document.getElementById('loadingSubtext');
+            const msg = error?.message || (typeof error === 'string' ? error : JSON.stringify(error || {}));
+            if (subtextEl) subtextEl.textContent = `Connection error: ${msg}`;
+
+            // Helpful diagnostics for user
+            let hint = 'Check backend URL, CORS settings, and network connectivity.';
+            if (/cors/i.test(msg)) hint = 'CORS error detected - ensure server CORS credentials:false and origin:true.';
+            if (/timeout|timed out|timeout of/i.test(msg)) hint = 'Connection timed out - try increasing server timeouts or check firewall.';
+
+            showToast('Connection Error', `${msg}. ${hint}`, 'error');
+
+            // Only show transport advice for transport errors
+            if (error?.type === 'TransportError' || /transport/i.test(msg)) {
+                console.log('[WS] Transport error, will try fallback transports/polling');
             }
         }
 
@@ -1791,7 +1852,6 @@
         }, { passive: true });
 
         // Search with optimized debouncing
-        let searchTimeout;
         document.getElementById('searchInput').addEventListener('input', (e) => {
             clearTimeout(searchTimeout);
             const query = e.target.value;
@@ -1910,7 +1970,14 @@
         document.addEventListener('DOMContentLoaded', () => {
             console.log('[APP] Initializing Roblox Studio Explorer...');
             console.log('[APP] Backend URL:', CONFIG.BACKEND_URL);
-            
+
+            // If opened via file://, warn user to serve via HTTP to avoid CORS/mixed-content issues
+            if (location.protocol === 'file:') {
+                const subtextEl = document.getElementById('loadingSubtext');
+                if (subtextEl) subtextEl.textContent = 'Detected file:// protocol - serve the frontend via a local HTTP server (npx http-server . -p 3000) to avoid CORS/mixed-content issues.';
+                showToast('Serve via HTTP', 'Open the frontend using a local HTTP server (npx http-server . -p 3000)', 'info');
+            }
+
             // Initialize WebSocket
             initWebSocket();
             
