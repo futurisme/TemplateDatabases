@@ -626,6 +626,8 @@
         .editor-content.active {
             display: flex;
             flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
         }
 
         /* Code Editor */
@@ -726,6 +728,38 @@
         .hljs-method { color: #dcdcaa; }
         .hljs-property { color: #9cdcfe; }
 
+        /* Editor Container - Main scrollable area */
+        #editorContainer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            min-height: 0;
+            height: 100%;
+            background: var(--bg-primary);
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        #editorContainer::-webkit-scrollbar {
+            width: 12px;
+        }
+        
+        #editorContainer::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        #editorContainer::-webkit-scrollbar-thumb {
+            background: var(--bg-hover);
+            border-radius: 6px;
+            border: 3px solid var(--bg-primary);
+        }
+        
+        #editorContainer::-webkit-scrollbar-thumb:hover {
+            background: var(--bg-tertiary);
+        }
+
         /* Luau-specific tokens */
         .hljs-keyword-luau { color: #c586c0; font-weight: 700; }
         .hljs-constant { color: #ffb86b; }
@@ -740,6 +774,24 @@
             gap: var(--space-md);
             color: var(--text-muted);
             padding: var(--space-xl);
+            overflow-y: auto;
+            overflow-x: hidden;
+            min-height: 0;
+            height: 100%;
+        }
+        
+        .empty-state::-webkit-scrollbar {
+            width: 12px;
+        }
+        
+        .empty-state::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .empty-state::-webkit-scrollbar-thumb {
+            background: var(--bg-hover);
+            border-radius: 6px;
+            border: 3px solid var(--bg-primary);
         }
 
         .empty-state-icon {
