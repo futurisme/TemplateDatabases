@@ -1223,8 +1223,11 @@
             BACKEND_URL: 'https://roblox-sync-backend-production.up.railway.app/',
             AUTO_RECONNECT: true,
             RECONNECT_DELAY: 1000,
+            RECONNECT_DELAY_MAX: 5000,
+            RECONNECT_ATTEMPTS: Infinity,
             TOAST_DURATION: 3000,
-            SEARCH_DEBOUNCE: 300
+            SEARCH_DEBOUNCE: 300,
+            CONNECTION_TIMEOUT: 10000
         };
 
         // ========== STATE MANAGEMENT ==========
@@ -1279,8 +1282,14 @@
             state.socket = io(CONFIG.BACKEND_URL, {
                 reconnection: CONFIG.AUTO_RECONNECT,
                 reconnectionDelay: CONFIG.RECONNECT_DELAY,
-                reconnectionAttempts: Infinity,
-                transports: ['websocket', 'polling']
+                reconnectionDelayMax: CONFIG.RECONNECT_DELAY_MAX,
+                reconnectionAttempts: CONFIG.RECONNECT_ATTEMPTS,
+                transports: ['websocket', 'polling'],
+                upgrade: true,
+                rememberUpgrade: true,
+                pingTimeout: 25000,
+                pingInterval: 10000,
+                skipInitializeEngine: false
             });
 
             // Connection Events
@@ -1288,40 +1297,101 @@
             state.socket.on('disconnect', handleDisconnect);
             state.socket.on('connect_error', handleConnectError);
             state.socket.on('game-update', handleGameUpdate);
+            state.socket.on('connection-ready', handleConnectionReady);
+            state.socket.on('pong', handlePong);
+            
+            // Reconnection events
+            state.socket.on('reconnect_attempt', () => {
+                console.log('[WS] Attempting reconnection...');
+                updateConnectionStatus(false);
+            });
+            
+            state.socket.on('reconnect', () => {
+                console.log('[WS] Reconnected successfully');
+                handleConnect();
+            });
+            
+            state.socket.on('reconnect_error', (error) => {
+                console.error('[WS] Reconnection error:', error);
+            });
+            
+            state.socket.on('reconnect_failed', () => {
+                console.error('[WS] Failed to reconnect');
+            });
+        }
+
+        function handleConnectionReady(data) {
+            console.log('[WS] Connection ready:', data.clientId ? data.clientId.substring(0, 8) : 'unknown');
+        }
+
+        function handlePong(data) {
+            const latency = Date.now() - (data.clientTimestamp || Date.now());
+            console.log('[WS] Pong received, latency:', latency + 'ms');
         }
 
         function handleConnect() {
             state.isConnected = true;
             updateConnectionStatus(true);
-            showToast('Connected to Studio', 'Connection established successfully', 'success');
-            console.log('[WS] Connected');
+            showToast('Connected', 'Connected to Studio sync server', 'success');
+            console.log('[WS] Connected successfully');
+            
+            // Request initial update
+            if (state.socket) {
+                state.socket.emit('request-update');
+            }
         }
 
-        function handleDisconnect() {
+        function handleDisconnect(reason) {
             state.isConnected = false;
             updateConnectionStatus(false);
-            console.log('[WS] Disconnected');
+            console.log('[WS] Disconnected:', reason);
+            
+            // Show different messages based on disconnect reason
+            if (reason === 'transport close') {
+                console.log('[WS] Connection closed by server or network');
+            } else if (reason === 'ping response timeout') {
+                console.log('[WS] Server ping timeout - attempting to reconnect');
+            }
         }
 
         function handleConnectError(error) {
             console.error('[WS] Connection error:', error);
             updateConnectionStatus(false);
+            
+            // Only show error toast if it's critical
+            if (error?.type === 'TransportError') {
+                console.log('[WS] Transport error, will try polling...');
+            }
         }
 
         function handleGameUpdate(data) {
-            console.log('[WS] Game update received:', data);
+            console.log('[WS] Game update received:', data.type || 'update');
             state.currentData = data;
             
+            // Handle different update types
+            if (!data.hierarchy && !data.scripts) {
+                console.warn('[WS] Received empty update, keeping current data');
+                return;
+            }
+            
             // Update UI
-            renderTree(data.hierarchy || []);
+            if (data.hierarchy) {
+                renderTree(data.hierarchy || []);
+            }
+            
+            if (data.scripts) {
+                window.studioScripts = data.scripts || {};
+            }
+            
             updateStats(data);
-            updateLastSyncTime(data.lastUpdate);
+            updateLastSyncTime(data.lastUpdate || data.serverTime);
             hideLoading();
             
-            // Store scripts globally
-            window.studioScripts = data.scripts || {};
-            
-            showToast('Synced', `${Object.keys(data.scripts || {}).length} scripts updated`, 'info');
+            // Show update toast only for full syncs
+            if (data.type === 'full') {
+                const scriptCount = Object.keys(data.scripts || {}).length;
+                showToast('Synced', `${scriptCount} scripts ready`, 'success');
+            }
         }
 
         // ========== UI UPDATES ==========
@@ -1734,6 +1804,26 @@
             return div.innerHTML;
         }
 
+        // Keep-alive ping interval
+        let pingInterval = null;
+        function startKeepAlive() {
+            // Send ping every 15 seconds to keep connection alive
+            if (pingInterval) clearInterval(pingInterval);
+            
+            pingInterval = setInterval(() => {
+                if (state.socket && state.isConnected) {
+                    state.socket.emit('ping', { timestamp: Date.now() });
+                }
+            }, 15000);
+        }
+
+        function stopKeepAlive() {
+            if (pingInterval) {
+                clearInterval(pingInterval);
+                pingInterval = null;
+            }
+        }
+
         // ========== INITIALIZATION ==========
         document.addEventListener('DOMContentLoaded', () => {
             console.log('[APP] Initializing Roblox Studio Explorer...');
@@ -1741,6 +1831,20 @@
             
             // Initialize WebSocket
             initWebSocket();
+            
+            // Start keep-alive ping when connected
+            const originalHandleConnect = handleConnect;
+            handleConnect = function() {
+                originalHandleConnect.call(this);
+                startKeepAlive();
+            };
+            
+            // Stop keep-alive ping when disconnected
+            const originalHandleDisconnect = handleDisconnect;
+            handleDisconnect = function(reason) {
+                originalHandleDisconnect.call(this, reason);
+                stopKeepAlive();
+            };
             
             // Check if backend URL is configured
             if (CONFIG.BACKEND_URL === 'YOUR_BACKEND_URL_HERE') {
