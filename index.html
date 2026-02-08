@@ -1426,71 +1426,28 @@
             });
         }
 
+        // Connection ready handler (single definition)
         function handleConnectionReady(data) {
             console.log('[WS] Connection ready:', data.clientId ? data.clientId.substring(0, 8) : 'unknown');
         }
 
-        function handlePong(data) {
-            const latency = Date.now() - (data.clientTimestamp || Date.now());
-            // Work with raw text, escape HTML first
-            let src = escapeHtml(code);
+        // Handle connection errors during initial connect / connect_error
+        function handleConnectError(error) {
+            console.error('[WS] Connect error:', error);
+            updateConnectionStatus(false);
 
-            // Preserve strings and long bracketed strings first
-            const strings = [];
-            let sIndex = 0;
+            const msg = (error && (error.message || error.toString())) || 'Unknown connect error';
+            const sub = document.getElementById('loadingSubtext');
+            if (sub) sub.textContent = `Connect error: ${msg}`;
 
-            // Long bracket strings [[ ... ]]
-            src = src.replace(/\[\[[\s\S]*?\]\]/g, (m) => {
-                strings.push(m);
-                return `__STR_${sIndex++}__`;
-            });
-
-            // Double-quoted and single-quoted
-            src = src.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (m) => { strings.push(m); return `__STR_${sIndex++}__`; });
-            src = src.replace(/'([^'\\]*(\\.[^'\\]*)*)'/g, (m) => { strings.push(m); return `__STR_${sIndex++}__`; });
-
-            // Block comments --[[ ... ]] and line comments -- ...
-            src = src.replace(/--\[\[[\s\S]*?\]\]/g, (m) => `<span class="hljs-comment">${m}</span>`);
-            src = src.replace(/--.*$/gm, (m) => `<span class="hljs-comment">${m}</span>`);
-
-            // Keywords (Luau + Lua)
-            const keywords = '\\b(?:local|function|end|if|then|else|elseif|for|while|do|return|true|false|nil|and|or|not|in|repeat|until|break|continue|yield|task|spawn|wait|return)\\b';
-            src = src.replace(new RegExp(keywords, 'g'), (m) => `<span class="hljs-keyword">${m}</span>`);
-
-            // Roblox builtins / APIs
-            const builtins = '\\b(?:game|workspace|script|player|players|Players|Enum|Instance|RBXScriptSignal|RBXScriptConnection|Vector3|CFrame|Color3|UDim|UDim2|BrickColor|print|warn|error|assert|pairs|ipairs|next|type|tostring|tonumber|math|table|string|os|debug|coroutine|require|task|spawn|wait)\\b';
-            src = src.replace(new RegExp(builtins, 'g'), (m) => `<span class="hljs-builtin">${m}</span>`);
-
-            // Numbers (int/float/hex)
-            src = src.replace(/\b0x[0-9a-fA-F]+\b/g, (m) => `<span class="hljs-number">${m}</span>`);
-            src = src.replace(/\b(\d+\.\d+|\d+)\b/g, (m) => `<span class="hljs-number">${m}</span>`);
-
-            // Function names before parentheses
-            src = src.replace(/\b([a-zA-Z_][\w:]*)\s*(?=\()/g, (m) => `<span class="hljs-function">${m}</span>`);
-
-            // Types / PascalCase (Instance names)
-            src = src.replace(/\b([A-Z][a-zA-Z0-9_]*)\b/g, (m) => `<span class="hljs-type">${m}</span>`);
-
-            // Property access (colon/dot) highlight operators lightly
-            src = src.replace(/(:|\.)/g, (m) => `<span class="hljs-operator">${m}</span>`);
-
-            // Restore preserved strings
-            src = src.replace(/__STR_(\d+)__/g, (match, idx) => `<span class="hljs-string">${strings[parseInt(idx)]}</span>`);
-
-            return src;
-
-            // Helpful diagnostics for user
+            // Friendly diagnostic guidance
             let hint = 'Check backend URL, CORS settings, and network connectivity.';
-            if (/cors/i.test(msg)) hint = 'CORS error detected - ensure server CORS credentials:false and origin:true.';
-            if (/timeout|timed out|timeout of/i.test(msg)) hint = 'Connection timed out - try increasing server timeouts or check firewall.';
+            if (/cors|cross/i.test(msg)) hint = 'Possible CORS issue. Ensure server allows your origin.';
+            if (/timeout|timed out|timeout of/i.test(msg)) hint = 'Connection timed out - check network or increase timeouts.';
 
             showToast('Connection Error', `${msg}. ${hint}`, 'error');
-
-            // Only show transport advice for transport errors
-            if (error?.type === 'TransportError' || /transport/i.test(msg)) {
-                console.log('[WS] Transport error, will try fallback transports/polling');
-            }
         }
+        
 
         function handleGameUpdate(data) {
             console.log('[WS] Game update received:', data.type || 'update');
