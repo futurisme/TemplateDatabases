@@ -1302,71 +1302,44 @@
         };
 
         // Allow easy local override (dev) via hostname or query param
-        (function resolveBackendUrl() {
-            try {
-                const params = new URLSearchParams(location.search);
-                const q = params.get('backend');
-                if (q) {
-                    CONFIG.BACKEND_URL = q.endsWith('/') ? q : q + '/';
-                    console.info('[CONFIG] Backend URL overridden via query param:', CONFIG.BACKEND_URL);
-                    return;
-                }
+        function handleConnect() {
+            state.isConnected = true;
+            updateConnectionStatus(true);
+            // Show the loading screen with the "waiting for plugin" message
+            showLoading();
+            updateLoadingMessage();
+            showToast('Connected', 'Waiting for Roblox Studio plugin...', 'info');
+            console.log('[WS] Connected successfully');
 
-                if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-                    CONFIG.BACKEND_URL = 'http://localhost:3001/';
-                    console.info('[CONFIG] Using local backend URL:', CONFIG.BACKEND_URL);
-                }
-            } catch (e) {
-                console.warn('[CONFIG] Failed to resolve backend override:', e);
+            // Request initial update
+            if (state.socket) {
+                state.socket.emit('request-update');
             }
-        })();
+        }
 
-        // ========== STATE MANAGEMENT ==========
-        const state = {
-            socket: null,
-            isConnected: false,
-            currentData: null,
-            openTabs: [],
-            activeTabId: null,
-            searchQuery: '',
-            expandedItems: new Set()
-        };
+        function handleDisconnect(reason) {
+            state.isConnected = false;
+            updateConnectionStatus(false);
+            showLoading();
+            updateLoadingMessage();
+            console.log('[WS] Disconnected:', reason);
 
-        // ========== ICONS DATABASE ==========
-        const ICONS = {
-            arrow: '<path d="M2 6L8 12L14 6H2Z"/>',
-            
-            // Services
-            workspace: '<circle cx="8" cy="8" r="6" fill="#3b82f6"/><circle cx="8" cy="8" r="3" fill="#1e3a8a"/>',
-            lighting: '<path fill="#f59e0b" d="M8 1l-2 5h4l-2 9 5-7H9l2-7z"/>',
-            players: '<path fill="#9ca3af" d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 7h10c0-2-2-3-5-3s-5 1-5 3z"/>',
-            
-            // Storage
-            repStorage: '<rect fill="#eab308" x="1" y="4" width="14" height="10" rx="1"/><path fill="#fff" d="M5 8h6M8 5v6" opacity="0.8"/>',
-            repFirst: '<rect fill="#3b82f6" x="1" y="4" width="14" height="10" rx="1"/><path fill="#fff" d="M8 6l-2 3h4l-2 3" opacity="0.8"/>',
-            svrScript: '<rect fill="#10b981" x="2" y="3" width="12" height="11" rx="1"/><path fill="#fff" d="M4 5h8M4 8h6M4 11h7" opacity="0.7"/>',
-            svrStorage: '<rect fill="#3b82f6" x="2" y="3" width="12" height="11" rx="1"/><rect fill="#fff" x="4" y="6" width="8" height="5" rx="1" opacity="0.5"/>',
-            
-            // Objects
-            folder: '<path fill="#eab308" d="M1 3h5l2 2h7v9H1z"/>',
-            part: '<path fill="#d1d5db" d="M8 2l6 3v6l-6 3-6-3V5l6-3z"/>',
-            model: '<g fill="#fff"><rect x="2" y="9" width="4" height="4"/><rect x="7" y="9" width="4" height="4"/><rect x="12" y="9" width="4" height="4"/><rect x="2" y="4" width="4" height="4"/><rect x="7" y="4" width="4" height="4"/><rect x="12" y="4" width="4" height="4"/></g>',
-            
-            // Scripts
-            script: '<rect fill="#6b7280" x="3" y="2" width="10" height="12" rx="1"/><path fill="#fff" d="M5 5h6M5 8h6M5 11h4"/>',
-            local: '<rect fill="#3b82f6" x="3" y="2" width="10" height="12" rx="1"/><circle fill="#fff" cx="8" cy="8" r="2"/>',
-            module: '<rect fill="#8b5cf6" x="3" y="2" width="10" height="12" rx="1"/><path fill="#fff" d="M5 11l2-2-2-2M9 11l-2-2 2-2"/>',
-            
-            // UI
-            screenGui: '<rect stroke="#10b981" stroke-width="2" fill="none" x="2" y="3" width="12" height="10" rx="1"/>',
-            frame: '<rect fill="#9ca3af" opacity="0.5" x="2" y="4" width="12" height="8" rx="1"/>',
-            
-            // Other
-            sound: '<path fill="#8b5cf6" d="M2 5v6h4l5 5V0L6 5H2z"/>',
-            chat: '<rect fill="#3b82f6" x="2" y="2" width="12" height="9" rx="1"/><path fill="#fff" d="M4 14l3-3"/>',
-        };
+            // Show different messages based on disconnect reason
+            if (reason === 'transport close') {
+                console.log('[WS] Connection closed by server or network');
+            } else if (reason === 'ping response timeout') {
+                console.log('[WS] Server ping timeout - attempting to reconnect');
+            }
+        }
 
-        // ========== WEBSOCKET CONNECTION ==========
+        function handleConnectionReady(data) {
+            console.log('[WS] Connection ready:', data.clientId ? data.clientId.substring(0, 8) : 'unknown');
+        }
+
+        function handlePong(data) {
+            const latency = Date.now() - (data.clientTimestamp || Date.now());
+            console.log('[WS] Pong received, latency:', latency + 'ms');
+        }
         async function initWebSocket() {
             console.log('[WS] Connecting to:', CONFIG.BACKEND_URL);
 
