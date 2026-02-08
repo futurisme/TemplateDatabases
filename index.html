@@ -224,8 +224,8 @@
 
         /* Action Buttons */
         .btn {
-            padding: 6px 12px;
-            background: var(--bg-tertiary);
+            padding: 8px 14px;
+            background: linear-gradient(180deg, var(--bg-hover) 0%, var(--bg-tertiary) 100%);
             border: 1px solid var(--border-primary);
             border-radius: 6px;
             color: var(--text-primary);
@@ -235,21 +235,32 @@
             transition: all var(--transition-fast);
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
+            white-space: nowrap;
+            min-height: 32px;
         }
 
         .btn:hover {
-            background: var(--bg-hover);
+            background: linear-gradient(180deg, var(--accent-blue) 0%, #2563eb 100%);
             border-color: var(--accent-blue);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
         }
 
         .btn:active {
-            transform: translateY(1px);
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .btn-icon {
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
         }
 
         /* ========== MAIN WORKSPACE ========== */
@@ -456,14 +467,18 @@
         }
 
         .tree-toggle svg {
-            width: 10px;
-            height: 10px;
-            fill: var(--text-secondary);
+            width: 12px;
+            height: 12px;
+            stroke: var(--text-secondary);
             transition: transform var(--transition-fast);
         }
 
-        .tree-item.collapsed .tree-toggle svg {
+        .tree-item.collapsed .tree-toggle .chevron {
             transform: rotate(-90deg);
+        }
+        
+        .tree-item .tree-toggle .chevron {
+            transform: rotate(0deg);
         }
 
         .tree-item.leaf .tree-toggle {
@@ -848,15 +863,18 @@
         /* ========== RESPONSIVE ========== */
         @media (max-width: 1024px) {
             .explorer-panel {
-                position: absolute;
+                position: fixed;
                 left: 0;
                 top: 40px;
                 bottom: 0;
                 width: 320px;
+                max-width: 80vw;
                 z-index: 200;
                 transform: translateX(-100%);
                 transition: transform var(--transition-base);
                 box-shadow: var(--shadow-lg);
+                border-right: 2px solid var(--border-primary);
+                overflow-y: auto;
             }
 
             .explorer-panel.mobile-open {
@@ -866,25 +884,53 @@
             .stats {
                 display: none;
             }
+            
+            .topbar-right {
+                gap: var(--space-sm);
+            }
+            
+            .btn {
+                padding: 6px 10px;
+                font-size: 11px;
+                min-height: 28px;
+            }
+            
+            .btn-icon {
+                width: 14px;
+                height: 14px;
+            }
         }
 
         @media (max-width: 768px) {
             .topbar {
                 padding: 0 var(--space-sm);
                 height: 44px;
+                gap: var(--space-sm);
             }
 
             /* Make topbar buttons larger and clearer on mobile */
             .icon-btn {
                 width: auto;
-                height: 36px;
-                padding: 8px 10px;
-                border-radius: 8px;
+                height: 32px;
+                padding: 6px 8px;
+                border-radius: 6px;
                 opacity: 1;
+                background: var(--bg-tertiary);
+                border: 1px solid var(--border-primary);
+            }
+            
+            .icon-btn:hover {
+                background: var(--bg-hover);
             }
 
             .logo-text {
                 display: none;
+            }
+            
+            .logo-icon {
+                width: 28px;
+                height: 28px;
+                font-size: 18px;
             }
 
             .panel-title {
@@ -899,6 +945,7 @@
             .tree-toggle {
                 width: 18px;
                 height: 18px;
+                min-width: 18px;
             }
 
             .tree-icon {
@@ -914,6 +961,7 @@
             .tree-badge {
                 font-size: 9px;
                 padding: 1px 4px;
+                display: none;
             }
 
             .code-area {
@@ -926,6 +974,7 @@
                 padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-md);
                 min-width: 45px;
                 font-size: 12px;
+                display: none;
             }
 
             .line-numbers div {
@@ -949,104 +998,123 @@
                 left: var(--space-md);
                 max-width: calc(100vw - 32px);
             }
+            
+            .btn {
+                padding: 6px 8px;
+                font-size: 10px;
+                min-height: 28px;
+            }
         }
 
         @media (max-width: 640px) {
             .topbar {
-                padding: 0 var(--space-sm);
-                height: 48px;
-                gap: var(--space-sm);
+                padding: 0 var(--space-xs);
+                height: 44px;
+                gap: var(--space-xs);
             }
 
+            .logo {
+                gap: 4px;
+                font-size: 12px;
+            }
+            
             .logo-icon {
-                width: 28px;
-                height: 28px;
-                font-size: 18px;
+                width: 24px;
+                height: 24px;
+                font-size: 16px;
             }
 
             .search-input {
-                padding: 10px 12px;
-                font-size: 14px;
+                padding: 8px 10px;
+                font-size: 13px;
             }
 
             .btn {
-                padding: 8px 10px;
-                font-size: 11px;
+                padding: 6px 8px;
+                font-size: 10px;
+                min-height: 26px;
+            }
+            
+            .btn-icon {
+                width: 13px;
+                height: 13px;
             }
 
             .tree-row {
-                height: 36px;
-                margin: 2px 2px;
+                height: 32px;
+                margin: 1px 2px;
             }
 
             .tree-toggle {
-                width: 20px;
-                height: 20px;
+                width: 18px;
+                height: 18px;
+                min-width: 18px;
             }
 
             .tree-toggle svg {
-                width: 12px;
-                height: 12px;
+                width: 11px;
+                height: 11px;
             }
 
             .tree-icon {
-                width: 22px;
-                height: 22px;
+                width: 18px;
+                height: 18px;
             }
 
             .tree-label {
-                font-size: 13px;
+                font-size: 12px;
             }
 
             .tree-badge {
-                font-size: 10px;
-                padding: 2px 5px;
+                font-size: 9px;
+                padding: 1px 3px;
+                display: none;
             }
 
             .code-editor {
-                font-size: 13px;
-                line-height: 20px;
+                font-size: 12px;
+                line-height: 18px;
             }
 
             .code-area {
-                font-size: 13px;
-                line-height: 20px;
+                font-size: 12px;
+                line-height: 18px;
                 padding: var(--space-sm);
             }
 
             .line-numbers {
-                padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-sm);
-                min-width: 40px;
-                font-size: 11px;
-            }
-
-            .line-numbers div {
-                height: 20px;
+                display: none;
             }
 
             .icon-btn {
                 width: 28px;
                 height: 28px;
+                padding: 4px 6px;
             }
 
             .tab {
-                min-width: 90px;
-                max-width: 140px;
-                height: 36px;
-                padding: 0 var(--space-sm);
+                min-width: 80px;
+                max-width: 50vw;
+                height: 34px;
+                padding: 0 var(--space-xs);
             }
 
             .tab.active {
-                height: 38px;
+                height: 36px;
             }
 
             .tab-label {
-                font-size: 11px;
+                font-size: 10px;
+            }
+            
+            .tab-icon {
+                width: 14px;
+                height: 14px;
             }
 
             .tab-close {
-                width: 16px;
-                height: 16px;
+                width: 14px;
+                height: 14px;
             }
 
             .empty-state {
@@ -1055,16 +1123,16 @@
             }
 
             .empty-state-icon {
-                width: 60px;
-                height: 60px;
+                width: 50px;
+                height: 50px;
             }
 
             .empty-state-title {
-                font-size: 16px;
+                font-size: 14px;
             }
 
             .empty-state-text {
-                font-size: 13px;
+                font-size: 12px;
             }
 
             .search-bar {
@@ -1078,7 +1146,7 @@
 
             .stat-item {
                 gap: 2px;
-                font-size: 10px;
+                font-size: 9px;
             }
 
             .stat-label {
@@ -1086,7 +1154,7 @@
             }
 
             .stat-value {
-                font-size: 10px;
+                font-size: 9px;
             }
         }
 
@@ -1113,18 +1181,25 @@
             display: none;
             width: 36px;
             height: 36px;
-            background: var(--bg-tertiary);
+            background: linear-gradient(180deg, var(--bg-hover) 0%, var(--bg-tertiary) 100%);
             border: 1px solid var(--border-primary);
             border-radius: 6px;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all var(--transition-fast);
+            color: var(--text-primary);
+            flex-shrink: 0;
         }
 
         .mobile-toggle:hover {
-            background: var(--bg-hover);
+            background: linear-gradient(180deg, var(--accent-blue) 0%, #2563eb 100%);
             border-color: var(--accent-blue);
+            transform: translateY(-1px);
+        }
+        
+        .mobile-toggle:active {
+            transform: translateY(0);
         }
 
         @media (max-width: 1024px) {
@@ -1312,15 +1387,33 @@
             expandedItems: new Set()
         };
 
-        // ======= ICONS (SVG snippets) =======
+        // ======= ICONS - Roblox Studio Explorer Style =======
         const ICONS = {
-            part: '<path d="M2 2h12v12H2z" fill="currentColor"/>',
-            script: '<path d="M3 2h6l4 4v8H3z" fill="currentColor"/>',
-            local: '<path d="M3 2h10v12H3z" fill="currentColor"/><path d="M7 2v4" stroke="currentColor" stroke-width="1"/>',
-            module: '<path d="M2 4h12v8H2z" rx="1" fill="currentColor"/>',
-            arrow: '<path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
-            folder: '<path d="M2 5h5l2 2h5v6H2z" fill="currentColor"/>',
-            script_small: '<path d="M3 2h6l2 2v8H3z" fill="currentColor"/>'
+            // Element Icons
+            part: '<g fill="currentColor"><rect x="2" y="3" width="12" height="10" rx="1" ry="1" opacity="0.9"/><path d="M3 4h10v8H3z" fill="var(--bg-secondary)" opacity="0.5"/></g>',
+            script: '<g fill="currentColor"><path d="M3 2h8l2 2v10H3V2z" fill-opacity="0.85"/><path d="M5 6h6M5 8h4M5 10h6" stroke="var(--bg-secondary)" stroke-width="0.8" opacity="0.6"/></g>',
+            local: '<g fill="currentColor"><path d="M3 2h8l2 2v10H3V2z" fill-opacity="0.85"/><path d="M6 5v6M8 5v6" stroke="currentColor" stroke-width="0.8" opacity="0.4"/></g>',
+            module: '<g fill="currentColor"><path d="M2 4h12v8H2z" rx="0.5" ry="0.5" fill-opacity="0.85"/><rect x="3" y="5" width="4" height="6" fill="var(--bg-secondary)" opacity="0.4"/><rect x="9" y="5" width="3" height="6" fill="var(--bg-secondary)" opacity="0.3"/></g>',
+            folder: '<g fill="currentColor"><path d="M1 5h14v9H1z" rx="0.5" ry="0.5" fill-opacity="0.9"/><path d="M2 6h6l3-3h7v10H2z" opacity="0.5"/><rect x="2" y="5" width="5" height="3" fill="currentColor" opacity="0.7"/></g>',
+            arrow: '<path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>',
+            
+            // Service Icons
+            model: '<g fill="currentColor"><rect x="2" y="3" width="6" height="6" opacity="0.8"/><rect x="9" y="3" width="5" height="6" opacity="0.6"/><rect x="2" y="10" width="6" height="3" opacity="0.7"/><rect x="9" y="10" width="5" height="3" opacity="0.5"/></g>',
+            workspace: '<g fill="currentColor"><path d="M2 4h12v8H2z" fill-opacity="0.7"/><path d="M4 5v6M8 5v6M12 5v6" stroke="var(--bg-primary)" stroke-width="0.8" opacity="0.5"/></g>',
+            terrain: '<g fill="currentColor"><path d="M2 4l4-2l4 2l4-2v10H2z" fill-opacity="0.8"/><path d="M2 7l3-2l3 2l3-2l3 2" stroke="var(--bg-primary)" stroke-width="0.7" fill="none" opacity="0.4"/></g>',
+            
+            // Property Icons
+            property: '<g fill="currentColor"><path d="M3 4h10v8H3z" rx="1" fill-opacity="0.75"/><path d="M5 7h5M5 9h3" stroke="var(--bg-secondary)" stroke-width="0.8" opacity="0.6"/></g>',
+            value: '<g fill="currentColor"><circle cx="8" cy="8" r="5" fill-opacity="0.8"/><circle cx="8" cy="8" r="3" fill="var(--bg-secondary)" opacity="0.4"/></g>',
+            
+            // Special Icons
+            luau: '<g fill="currentColor"><path d="M3 2h10v12H3z" rx="1" fill-opacity="0.85"/><path d="M5 5h6M5 7h4M5 9h6" stroke="var(--bg-secondary)" stroke-width="0.8" opacity="0.6"/></g>',
+            plugin: '<g fill="currentColor"><rect x="3" y="3" width="4" height="4" opacity="0.85"/><rect x="9" y="3" width="4" height="4" opacity="0.75"/><rect x="3" y="9" width="4" height="4" opacity="0.75"/><rect x="9" y="9" width="4" height="4" opacity="0.65"/></g>',
+            
+            // UI Navigation
+            chevron_right: '<path d="M5 2l6 6-6 6" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>',
+            chevron_down: '<path d="M2 5l6 6 6-6" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>',
+            close: '<path d="M2 2l12 12M14 2L2 14" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>' 
         };
 
         // Allow easy local override (dev) via hostname or query param
@@ -1437,11 +1530,6 @@
             });
         }
 
-        // Connection ready handler (single definition)
-        function handleConnectionReady(data) {
-            console.log('[WS] Connection ready:', data.clientId ? data.clientId.substring(0, 8) : 'unknown');
-        }
-
         // Handle connection errors during initial connect / connect_error
         function handleConnectError(error) {
             console.error('[WS] Connect error:', error);
@@ -1556,13 +1644,40 @@
         }
 
         // ========== TREE RENDERING ==========
+        // Get icon based on element type/class
+        function getElementIcon(node) {
+            const type = node.c || node.t || '';
+            const typeMap = {
+                'Part': 'part',
+                'Model': 'model',
+                'Script': 'script',
+                'LocalScript': 'local',
+                'ModuleScript': 'module',
+                'Terrain': 'terrain',
+                'Workspace': 'workspace',
+                'Plugin': 'plugin'
+            };
+            
+            // Check for explicit icon type
+            if (node.i && ICONS[node.i]) return ICONS[node.i];
+            
+            // Map by class name
+            if (typeMap[type] && ICONS[typeMap[type]]) return ICONS[typeMap[type]];
+            
+            // Detect script files
+            if (type.includes('Script')) return ICONS.script;
+            
+            // Default to folder for containers or part for objects
+            return node.children ? ICONS.folder : ICONS.part;
+        }
+
         function buildTreeHTML(nodes, level = 0) {
             if (!nodes || nodes.length === 0) return '';
             
             let html = '';
             for (const node of nodes) {
                 const hasChildren = node.children && node.children.length > 0;
-                const iconSvg = ICONS[node.i] || ICONS.part;
+                const iconSvg = getElementIcon(node);
                 const isScript = node.isScript || ['Script', 'LocalScript', 'ModuleScript'].includes(node.c);
                 const itemId = `item-${Math.random().toString(36).substr(2, 9)}`;
                 
@@ -1578,7 +1693,7 @@
                     ${isScript ? 'data-script="true"' : ''}>
                     <div class="tree-row">
                         <div class="tree-toggle">
-                            ${hasChildren ? `<svg viewBox="0 0 16 16">${ICONS.arrow}</svg>` : ''}
+                            ${hasChildren ? `<svg viewBox="0 0 16 16" class="chevron">${ICONS.chevron_right}</svg>` : ''}
                         </div>
                         <div class="tree-icon">
                             <svg viewBox="0 0 16 16">${iconSvg}</svg>
