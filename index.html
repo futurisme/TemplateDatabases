@@ -353,6 +353,25 @@
             overflow-y: auto;
             overflow-x: hidden;
             padding: var(--space-sm) 0;
+            will-change: scroll-position;
+            contain: content;
+        }
+
+        .tree-container::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .tree-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .tree-container::-webkit-scrollbar-thumb {
+            background: var(--bg-hover);
+            border-radius: 6px;
+        }
+
+        .tree-container::-webkit-scrollbar-thumb:hover {
+            background: var(--bg-tertiary);
         }
 
         /* Tree Structure */
@@ -605,22 +624,46 @@
         .code-area {
             flex: 1;
             padding: var(--space-md);
-            overflow: auto;
+            overflow-y: auto;
+            overflow-x: auto;
             background: var(--bg-primary);
             white-space: pre;
             tab-size: 4;
+            word-wrap: normal;
+            will-change: scroll-position;
+            contain: content;
         }
 
-        /* Syntax Highlighting */
-        .hljs-keyword { color: #569cd6; font-weight: 600; }
+        .code-area::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        .code-area::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .code-area::-webkit-scrollbar-thumb {
+            background: var(--bg-hover);
+            border-radius: 6px;
+        }
+
+        .code-area::-webkit-scrollbar-thumb:hover {
+            background: var(--bg-tertiary);
+        }
+
+        /* Syntax Highlighting - Enhanced Roblox Lua */
+        .hljs-keyword { color: #569cd6; font-weight: 700; }
         .hljs-string { color: #ce9178; }
-        .hljs-comment { color: #6a9955; font-style: italic; }
-        .hljs-function { color: #dcdcaa; }
+        .hljs-comment { color: #6a9955; font-style: italic; opacity: 0.95; }
+        .hljs-function { color: #dcdcaa; font-weight: 600; }
         .hljs-variable { color: #9cdcfe; }
-        .hljs-number { color: #b5cea8; }
-        .hljs-type { color: #4ec9b0; }
+        .hljs-number { color: #b5cea8; font-weight: 500; }
+        .hljs-type { color: #4ec9b0; font-weight: 600; }
         .hljs-operator { color: #d4d4d4; }
-        .hljs-builtin { color: #4fc1ff; }
+        .hljs-builtin { color: #4fc1ff; font-weight: 600; }
+        .hljs-method { color: #dcdcaa; }
+        .hljs-property { color: #9cdcfe; }
 
         /* Empty State */
         .empty-state {
@@ -751,7 +794,7 @@
             .explorer-panel {
                 position: absolute;
                 left: 0;
-                top: 0;
+                top: 40px;
                 bottom: 0;
                 width: 320px;
                 z-index: 200;
@@ -769,13 +812,65 @@
             }
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 768px) {
             .topbar {
                 padding: 0 var(--space-sm);
+                height: 44px;
             }
 
             .logo-text {
                 display: none;
+            }
+
+            .panel-title {
+                font-size: 10px;
+            }
+
+            .tree-row {
+                height: 32px;
+                padding: 0 var(--space-xs);
+            }
+
+            .tree-toggle {
+                width: 18px;
+                height: 18px;
+            }
+
+            .tree-icon {
+                width: 20px;
+                height: 20px;
+                margin-right: var(--space-xs);
+            }
+
+            .tree-label {
+                font-size: 12px;
+            }
+
+            .tree-badge {
+                font-size: 9px;
+                padding: 1px 4px;
+            }
+
+            .code-area {
+                font-size: 13px;
+                line-height: 20px;
+                padding: var(--space-sm);
+            }
+
+            .line-numbers {
+                padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-md);
+                min-width: 45px;
+                font-size: 12px;
+            }
+
+            .line-numbers div {
+                height: 20px;
+            }
+
+            .tab {
+                min-width: 100px;
+                max-width: 160px;
+                font-size: 11px;
             }
 
             .explorer-panel {
@@ -787,6 +882,164 @@
                 min-width: calc(100vw - 32px);
                 right: var(--space-md);
                 left: var(--space-md);
+                max-width: calc(100vw - 32px);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .topbar {
+                padding: 0 var(--space-sm);
+                height: 48px;
+                gap: var(--space-sm);
+            }
+
+            .logo-icon {
+                width: 28px;
+                height: 28px;
+                font-size: 18px;
+            }
+
+            .search-input {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+
+            .btn {
+                padding: 8px 10px;
+                font-size: 11px;
+            }
+
+            .tree-row {
+                height: 36px;
+                margin: 2px 2px;
+            }
+
+            .tree-toggle {
+                width: 20px;
+                height: 20px;
+            }
+
+            .tree-toggle svg {
+                width: 12px;
+                height: 12px;
+            }
+
+            .tree-icon {
+                width: 22px;
+                height: 22px;
+            }
+
+            .tree-label {
+                font-size: 13px;
+            }
+
+            .tree-badge {
+                font-size: 10px;
+                padding: 2px 5px;
+            }
+
+            .code-editor {
+                font-size: 13px;
+                line-height: 20px;
+            }
+
+            .code-area {
+                font-size: 13px;
+                line-height: 20px;
+                padding: var(--space-sm);
+            }
+
+            .line-numbers {
+                padding: var(--space-sm) var(--space-sm) var(--space-sm) var(--space-sm);
+                min-width: 40px;
+                font-size: 11px;
+            }
+
+            .line-numbers div {
+                height: 20px;
+            }
+
+            .icon-btn {
+                width: 28px;
+                height: 28px;
+            }
+
+            .tab {
+                min-width: 90px;
+                max-width: 140px;
+                height: 36px;
+                padding: 0 var(--space-sm);
+            }
+
+            .tab.active {
+                height: 38px;
+            }
+
+            .tab-label {
+                font-size: 11px;
+            }
+
+            .tab-close {
+                width: 16px;
+                height: 16px;
+            }
+
+            .empty-state {
+                padding: var(--space-md);
+                gap: var(--space-sm);
+            }
+
+            .empty-state-icon {
+                width: 60px;
+                height: 60px;
+            }
+
+            .empty-state-title {
+                font-size: 16px;
+            }
+
+            .empty-state-text {
+                font-size: 13px;
+            }
+
+            .search-bar {
+                padding: var(--space-xs);
+            }
+
+            .status-badge {
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+
+            .stat-item {
+                gap: 2px;
+                font-size: 10px;
+            }
+
+            .stat-label {
+                display: none;
+            }
+
+            .stat-value {
+                font-size: 10px;
+            }
+        }
+
+        @media (max-height: 600px) {
+            .topbar {
+                height: 36px;
+            }
+
+            .tree-row {
+                height: 24px;
+            }
+
+            .line-numbers div {
+                height: 18px;
+            }
+
+            .code-editor {
+                line-height: 18px;
             }
         }
 
@@ -1129,8 +1382,12 @@
                 const isScript = node.isScript || ['Script', 'LocalScript', 'ModuleScript'].includes(node.c);
                 const itemId = `item-${Math.random().toString(36).substr(2, 9)}`;
                 
+                // Collapse children by default (except root level)
+                const collapsedClass = hasChildren && level > 0 ? 'collapsed' : '';
+                const stateClass = hasChildren ? collapsedClass : 'leaf';
+                
                 html += `
-                <li class="tree-item ${hasChildren ? 'expanded' : 'leaf'}" 
+                <li class="tree-item ${stateClass}" 
                     data-id="${itemId}"
                     data-name="${node.n}" 
                     data-class="${node.c}"
@@ -1202,14 +1459,44 @@
         function highlightCode(code) {
             if (!code) return '';
             
-            return escapeHtml(code)
-                .replace(/\b(local|function|end|if|then|else|elseif|for|while|do|return|true|false|nil|and|or|not|in|repeat|until|break|continue)\b/g, '<span class="hljs-keyword">$1</span>')
-                .replace(/"([^"]*)"/g, '<span class="hljs-string">"$1"</span>')
-                .replace(/'([^']*)'/g, '<span class="hljs-string">\'$1\'</span>')
-                .replace(/--(.+)$/gm, '<span class="hljs-comment">--$1</span>')
-                .replace(/\b([A-Z][a-zA-Z0-9]*)\b/g, '<span class="hljs-type">$1</span>')
-                .replace(/\b(\d+(\.\d+)?)\b/g, '<span class="hljs-number">$1</span>')
-                .replace(/\b(game|workspace|script|Enum|Instance|math|table|string|os|print|warn|error)\b/g, '<span class="hljs-builtin">$1</span>');
+            let highlighted = escapeHtml(code);
+            
+            // Comments (must be first to avoid highlighting inside comments)
+            highlighted = highlighted.replace(/--(.+)$/gm, '<span class="hljs-comment">--$1</span>');
+            
+            // Strings - preserve to avoid processing content inside
+            const strings = [];
+            let stringIndex = 0;
+            highlighted = highlighted.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (match) => {
+                strings.push(match);
+                return `__STRING_${stringIndex++}__`;
+            });
+            highlighted = highlighted.replace(/'([^'\\]*(\\.[^'\\]*)*)'/g, (match) => {
+                strings.push(match);
+                return `__STRING_${stringIndex++}__`;
+            });
+            
+            // Keywords
+            highlighted = highlighted.replace(/\b(local|function|end|if|then|else|elseif|for|while|do|return|true|false|nil|and|or|not|in|repeat|until|break|continue|import|require)\b/g, '<span class="hljs-keyword">$1</span>');
+            
+            // Built-in Roblox API and functions
+            highlighted = highlighted.replace(/\b(game|workspace|script|Enum|Instance|RBXScriptSignal|RBXScriptConnection|Vector3|CFrame|Color3|UDim|UDim2|BrickColor|print|warn|error|assert|pairs|ipairs|next|type|tostring|tonumber|math|table|string|os|debug|coroutine)\b/g, '<span class="hljs-builtin">$1</span>');
+            
+            // Numbers
+            highlighted = highlighted.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="hljs-number">$1</span>');
+            
+            // Function calls (word followed by ()
+            highlighted = highlighted.replace(/\b([a-zA-Z_]\w*)\s*(?=\()/g, '<span class="hljs-function">$1</span>');
+            
+            // Types (PascalCase)
+            highlighted = highlighted.replace(/\b([A-Z][a-zA-Z0-9]*)\b/g, '<span class="hljs-type">$1</span>');
+            
+            // Restore strings
+            highlighted = highlighted.replace(/__STRING_(\d+)__/g, (match, idx) => {
+                return `<span class="hljs-string">${strings[parseInt(idx)]}</span>`;
+            });
+            
+            return highlighted;
         }
 
         // ========== EDITOR MANAGEMENT ==========
@@ -1352,12 +1639,18 @@
             const row = e.target.closest('.tree-row');
             if (!row) return;
 
-            // Selection
-            document.querySelectorAll('.tree-row').forEach(r => r.classList.remove('selected'));
-            row.classList.add('selected');
-
             const li = row.parentElement;
             
+            // Expand/Collapse (do this first for better UX)
+            if (!li.classList.contains('leaf')) {
+                li.classList.toggle('collapsed');
+                return; // Don't select when toggling
+            }
+
+            // Selection
+            document.querySelectorAll('.tree-row.selected').forEach(r => r.classList.remove('selected'));
+            row.classList.add('selected');
+
             // Script Opening
             if (li.dataset.script === 'true') {
                 const scriptName = li.dataset.name;
@@ -1367,17 +1660,18 @@
                 
                 openScript(scriptName, icon);
             }
+        }, { passive: true });
 
-            // Expand/Collapse
-            if (!li.classList.contains('leaf')) {
-                li.classList.toggle('collapsed');
-            }
-        });
-
-        // Search
+        // Search with optimized debouncing
+        let searchTimeout;
         document.getElementById('searchInput').addEventListener('input', (e) => {
-            handleSearch(e.target.value);
-        });
+            clearTimeout(searchTimeout);
+            const query = e.target.value;
+            
+            searchTimeout = setTimeout(() => {
+                handleSearch(query);
+            }, CONFIG.SEARCH_DEBOUNCE);
+        }, { passive: true });
 
         // Refresh Button
         document.getElementById('refreshBtn').addEventListener('click', () => {
@@ -1390,34 +1684,47 @@
             }
         });
 
-        // Expand/Collapse All
+        // Expand/Collapse All with batched DOM updates
         document.getElementById('expandAllBtn').addEventListener('click', () => {
-            document.querySelectorAll('.tree-item').forEach(item => {
-                item.classList.remove('collapsed');
+            requestAnimationFrame(() => {
+                document.querySelectorAll('.tree-item').forEach(item => {
+                    item.classList.remove('collapsed');
+                });
             });
         });
 
         document.getElementById('collapseAllBtn').addEventListener('click', () => {
-            document.querySelectorAll('.tree-item').forEach(item => {
-                if (!item.classList.contains('leaf')) {
-                    item.classList.add('collapsed');
-                }
+            requestAnimationFrame(() => {
+                document.querySelectorAll('.tree-item').forEach(item => {
+                    if (!item.classList.contains('leaf')) {
+                        item.classList.add('collapsed');
+                    }
+                });
             });
         });
 
-        // Mobile Toggle
-        document.getElementById('mobileToggle').addEventListener('click', () => {
-            const panel = document.getElementById('explorerPanel');
-            const backdrop = document.getElementById('backdrop');
-            
-            panel.classList.toggle('mobile-open');
+        // Mobile Toggle with touch support
+        const mobileToggle = document.getElementById('mobileToggle');
+        const explorerPanel = document.getElementById('explorerPanel');
+        const backdrop = document.getElementById('backdrop');
+        
+        mobileToggle.addEventListener('click', () => {
+            explorerPanel.classList.toggle('mobile-open');
             backdrop.classList.toggle('active');
         });
 
         // Close mobile panel when clicking backdrop
-        document.getElementById('backdrop').addEventListener('click', () => {
-            document.getElementById('explorerPanel').classList.remove('mobile-open');
-            document.getElementById('backdrop').classList.remove('active');
+        backdrop.addEventListener('click', () => {
+            explorerPanel.classList.remove('mobile-open');
+            backdrop.classList.remove('active');
+        }, { passive: true });
+
+        // Close mobile panel when selecting an item
+        document.getElementById('treeRoot').addEventListener('click', () => {
+            if (window.innerWidth <= 1024) {
+                explorerPanel.classList.remove('mobile-open');
+                backdrop.classList.remove('active');
+            }
         });
 
         // ========== UTILITY FUNCTIONS ==========
