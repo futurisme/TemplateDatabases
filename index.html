@@ -661,7 +661,20 @@
             contain: content;
             -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
             overscroll-behavior: contain; /* avoid parent scroll bleed */
-            scroll-behavior: auto;
+            scroll-behavior: smooth;
+            scroll-snap-type: y proximity;
+            font-family: var(--font-mono);
+        }
+        
+        .code-area::-webkit-scrollbar-thumb {
+            background: var(--bg-hover);
+            border-radius: 6px;
+            border: 3px solid var(--bg-primary);
+        }
+        
+        .code-area::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
         }
 
         .code-area::-webkit-scrollbar {
@@ -1304,6 +1317,12 @@
                             <path d="M1 8h14"/>
                         </svg>
                         <span class="icon-label">Collapse</span>
+                    </div>
+                    <div class="icon-btn" id="closeExplorer" title="Close Explorer" role="button" aria-label="Close Explorer" style="display: none;">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                            <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                        </svg>
+                        <span class="icon-label">Close</span>
                     </div>
                 </div>
             </div>
@@ -2053,15 +2072,27 @@
         backdrop.addEventListener('click', () => {
             explorerPanel.classList.remove('mobile-open');
             backdrop.classList.remove('active');
+            mobileToggle.setAttribute('aria-expanded', 'false');
         }, { passive: true });
 
-        // Close mobile panel when selecting an item
-        document.getElementById('treeRoot').addEventListener('click', () => {
-            if (window.innerWidth <= 1024) {
-                explorerPanel.classList.remove('mobile-open');
-                backdrop.classList.remove('active');
-            }
+        // Close button for explorer panel (mobile)
+        const closeExplorerBtn = document.getElementById('closeExplorer');
+        closeExplorerBtn.addEventListener('click', () => {
+            explorerPanel.classList.remove('mobile-open');
+            backdrop.classList.remove('active');
+            mobileToggle.setAttribute('aria-expanded', 'false');
         });
+        
+        // Show/hide close button based on screen size
+        function updateCloseButtonVisibility() {
+            if (window.innerWidth <= 1024) {
+                closeExplorerBtn.style.display = '';
+            } else {
+                closeExplorerBtn.style.display = 'none';
+            }
+        }
+        updateCloseButtonVisibility();
+        window.addEventListener('resize', updateCloseButtonVisibility);
 
         // ========== UTILITY FUNCTIONS ==========
         function escapeHtml(text) {
