@@ -1301,6 +1301,17 @@
             CONNECTION_TIMEOUT: 10000
         };
 
+        // ========== STATE MANAGEMENT ==========
+        const state = {
+            socket: null,
+            isConnected: false,
+            currentData: null,
+            openTabs: [],
+            activeTabId: null,
+            searchQuery: '',
+            expandedItems: new Set()
+        };
+
         // Allow easy local override (dev) via hostname or query param
         function handleConnect() {
             state.isConnected = true;
