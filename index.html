@@ -731,6 +731,37 @@
             color: var(--text-secondary);
         }
 
+        .loading-subtext {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            max-width: 400px;
+            line-height: 1.5;
+        }
+
+        .loading-action-btn {
+            padding: 10px 20px;
+            background: var(--accent-blue);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            margin-top: var(--space-md);
+        }
+
+        .loading-action-btn:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .loading-action-btn:active {
+            transform: translateY(0);
+        }
+
         /* ========== TOAST NOTIFICATIONS ========== */
         .toast-container {
             position: fixed;
@@ -1180,7 +1211,11 @@
             <!-- Loading Overlay -->
             <div class="loading-overlay active" id="explorerLoading">
                 <div class="spinner"></div>
-                <div class="loading-text">Waiting for Roblox Studio...</div>
+                <div class="loading-text" id="loadingMessage">Connecting to server...</div>
+                <div class="loading-subtext" id="loadingSubtext"></div>
+                <button class="loading-action-btn" id="checkStatusBtn" title="Check connection status">
+                    Check Connection
+                </button>
             </div>
 
             <!-- Tree Container -->
@@ -1332,7 +1367,10 @@
         function handleConnect() {
             state.isConnected = true;
             updateConnectionStatus(true);
-            showToast('Connected', 'Connected to Studio sync server', 'success');
+            // Show the loading screen with the "waiting for plugin" message
+            showLoading();
+            updateLoadingMessage();
+            showToast('Connected', 'Waiting for Roblox Studio plugin...', 'info');
             console.log('[WS] Connected successfully');
             
             // Request initial update
@@ -1344,6 +1382,8 @@
         function handleDisconnect(reason) {
             state.isConnected = false;
             updateConnectionStatus(false);
+            showLoading();
+            updateLoadingMessage();
             console.log('[WS] Disconnected:', reason);
             
             // Show different messages based on disconnect reason
@@ -1433,12 +1473,30 @@
             document.getElementById('lastSync').textContent = `Last sync: ${timeStr}`;
         }
 
+        function updateLoadingMessage() {
+            const msgEl = document.getElementById('loadingMessage');
+            const subtextEl = document.getElementById('loadingSubtext');
+            
+            if (!state.isConnected) {
+                msgEl.textContent = 'Connecting to server...';
+                subtextEl.textContent = '';
+            } else {
+                msgEl.textContent = 'Connected - Waiting for Roblox Studio';
+                subtextEl.innerHTML = `
+                    <strong>Roblox Studio Plugin Status:</strong><br>
+                    Make sure the plugin is installed and enabled in Roblox Studio.<br>
+                    The plugin will automatically sync your game hierarchy and scripts.
+                `;
+            }
+        }
+
         function hideLoading() {
             document.getElementById('explorerLoading').classList.remove('active');
         }
 
         function showLoading() {
             document.getElementById('explorerLoading').classList.add('active');
+            updateLoadingMessage();
         }
 
         // ========== TREE RENDERING ==========
@@ -1751,6 +1809,30 @@
                 showToast('Refreshing', 'Requesting latest data from Studio', 'info');
             } else {
                 showToast('Not Connected', 'Cannot refresh while disconnected', 'error');
+            }
+        });
+
+        // Check Connection Button
+        document.getElementById('checkStatusBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('checkStatusBtn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Checking...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(CONFIG.BACKEND_URL + 'health');
+                if (response.ok) {
+                    const health = await response.json();
+                    showToast('Status', `Backend OK - Connected clients: ${health.clients}`, 'success');
+                } else {
+                    showToast('Status', 'Backend not responding', 'error');
+                }
+            } catch (err) {
+                showToast('Status', 'Cannot reach backend', 'error');
+                console.error('Health check failed:', err);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
         });
 
