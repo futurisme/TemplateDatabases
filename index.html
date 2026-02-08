@@ -312,11 +312,23 @@
             cursor: pointer;
             transition: all var(--transition-fast);
             opacity: 0.6;
+            gap: 6px;
+            padding: 4px 8px;
+            background: transparent;
         }
 
         .icon-btn:hover {
             background: var(--bg-hover);
             opacity: 1;
+        }
+
+        /* Icon labels for clarity on desktop */
+        .icon-btn .icon-label {
+            display: inline-block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-left: 6px;
+            white-space: nowrap;
         }
 
         /* Search Bar */
@@ -632,11 +644,20 @@
             word-wrap: normal;
             will-change: scroll-position;
             contain: content;
+            -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
+            overscroll-behavior: contain; /* avoid parent scroll bleed */
+            scroll-behavior: auto;
         }
 
         .code-area::-webkit-scrollbar {
             width: 12px;
             height: 12px;
+        }
+
+        /* Improved scrollbar for desktop while hidden on small screens */
+        @media (max-width: 768px) {
+            .icon-btn .icon-label { display: none; }
+            .code-area::-webkit-scrollbar { display: none; }
         }
 
         .code-area::-webkit-scrollbar-track {
@@ -661,9 +682,13 @@
         .hljs-number { color: #b5cea8; font-weight: 500; }
         .hljs-type { color: #4ec9b0; font-weight: 600; }
         .hljs-operator { color: #d4d4d4; }
-        .hljs-builtin { color: #4fc1ff; font-weight: 600; }
+        .hljs-builtin { color: #4fc1ff; font-weight: 700; }
         .hljs-method { color: #dcdcaa; }
         .hljs-property { color: #9cdcfe; }
+
+        /* Luau-specific tokens */
+        .hljs-keyword-luau { color: #c586c0; font-weight: 700; }
+        .hljs-constant { color: #ffb86b; }
 
         /* Empty State */
         .empty-state {
@@ -847,6 +872,15 @@
             .topbar {
                 padding: 0 var(--space-sm);
                 height: 44px;
+            }
+
+            /* Make topbar buttons larger and clearer on mobile */
+            .icon-btn {
+                width: auto;
+                height: 36px;
+                padding: 8px 10px;
+                border-radius: 8px;
+                opacity: 1;
             }
 
             .logo-text {
@@ -1120,7 +1154,7 @@
     <div class="topbar">
         <div class="topbar-left">
             <!-- Mobile Toggle -->
-            <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle Explorer">
+            <button class="mobile-toggle" id="mobileToggle" aria-label="Toggle Explorer" aria-controls="explorerPanel" aria-expanded="false">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                     <rect y="3" width="20" height="2" rx="1"/>
                     <rect y="9" width="20" height="2" rx="1"/>
@@ -1184,15 +1218,17 @@
             <div class="panel-header">
                 <span class="panel-title">Explorer</span>
                 <div class="panel-actions">
-                    <div class="icon-btn" id="expandAllBtn" title="Expand All">
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <div class="icon-btn" id="expandAllBtn" title="Expand All" role="button" aria-label="Expand All">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                             <path d="M1 3h14M1 8h14M1 13h14"/>
                         </svg>
+                        <span class="icon-label">Expand</span>
                     </div>
-                    <div class="icon-btn" id="collapseAllBtn" title="Collapse All">
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <div class="icon-btn" id="collapseAllBtn" title="Collapse All" role="button" aria-label="Collapse All">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                             <path d="M1 8h14"/>
                         </svg>
+                        <span class="icon-label">Collapse</span>
                     </div>
                 </div>
             </div>
@@ -1412,45 +1448,52 @@
 
         function handlePong(data) {
             const latency = Date.now() - (data.clientTimestamp || Date.now());
-            console.log('[WS] Pong received, latency:', latency + 'ms');
-        }
+            // Work with raw text, escape HTML first
+            let src = escapeHtml(code);
 
-        function handleConnect() {
-            state.isConnected = true;
-            updateConnectionStatus(true);
-            // Show the loading screen with the "waiting for plugin" message
-            showLoading();
-            updateLoadingMessage();
-            showToast('Connected', 'Waiting for Roblox Studio plugin...', 'info');
-            console.log('[WS] Connected successfully');
-            
-            // Request initial update
-            if (state.socket) {
-                state.socket.emit('request-update');
-            }
-        }
+            // Preserve strings and long bracketed strings first
+            const strings = [];
+            let sIndex = 0;
 
-        function handleDisconnect(reason) {
-            state.isConnected = false;
-            updateConnectionStatus(false);
-            showLoading();
-            updateLoadingMessage();
-            console.log('[WS] Disconnected:', reason);
-            
-            // Show different messages based on disconnect reason
-            if (reason === 'transport close') {
-                console.log('[WS] Connection closed by server or network');
-            } else if (reason === 'ping response timeout') {
-                console.log('[WS] Server ping timeout - attempting to reconnect');
-            }
-        }
+            // Long bracket strings [[ ... ]]
+            src = src.replace(/\[\[[\s\S]*?\]\]/g, (m) => {
+                strings.push(m);
+                return `__STR_${sIndex++}__`;
+            });
 
-        function handleConnectError(error) {
-            console.error('[WS] Connection error:', error);
-            updateConnectionStatus(false);
-            const subtextEl = document.getElementById('loadingSubtext');
-            const msg = error?.message || (typeof error === 'string' ? error : JSON.stringify(error || {}));
-            if (subtextEl) subtextEl.textContent = `Connection error: ${msg}`;
+            // Double-quoted and single-quoted
+            src = src.replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, (m) => { strings.push(m); return `__STR_${sIndex++}__`; });
+            src = src.replace(/'([^'\\]*(\\.[^'\\]*)*)'/g, (m) => { strings.push(m); return `__STR_${sIndex++}__`; });
+
+            // Block comments --[[ ... ]] and line comments -- ...
+            src = src.replace(/--\[\[[\s\S]*?\]\]/g, (m) => `<span class="hljs-comment">${m}</span>`);
+            src = src.replace(/--.*$/gm, (m) => `<span class="hljs-comment">${m}</span>`);
+
+            // Keywords (Luau + Lua)
+            const keywords = '\\b(?:local|function|end|if|then|else|elseif|for|while|do|return|true|false|nil|and|or|not|in|repeat|until|break|continue|yield|task|spawn|wait|return)\\b';
+            src = src.replace(new RegExp(keywords, 'g'), (m) => `<span class="hljs-keyword">${m}</span>`);
+
+            // Roblox builtins / APIs
+            const builtins = '\\b(?:game|workspace|script|player|players|Players|Enum|Instance|RBXScriptSignal|RBXScriptConnection|Vector3|CFrame|Color3|UDim|UDim2|BrickColor|print|warn|error|assert|pairs|ipairs|next|type|tostring|tonumber|math|table|string|os|debug|coroutine|require|task|spawn|wait)\\b';
+            src = src.replace(new RegExp(builtins, 'g'), (m) => `<span class="hljs-builtin">${m}</span>`);
+
+            // Numbers (int/float/hex)
+            src = src.replace(/\b0x[0-9a-fA-F]+\b/g, (m) => `<span class="hljs-number">${m}</span>`);
+            src = src.replace(/\b(\d+\.\d+|\d+)\b/g, (m) => `<span class="hljs-number">${m}</span>`);
+
+            // Function names before parentheses
+            src = src.replace(/\b([a-zA-Z_][\w:]*)\s*(?=\()/g, (m) => `<span class="hljs-function">${m}</span>`);
+
+            // Types / PascalCase (Instance names)
+            src = src.replace(/\b([A-Z][a-zA-Z0-9_]*)\b/g, (m) => `<span class="hljs-type">${m}</span>`);
+
+            // Property access (colon/dot) highlight operators lightly
+            src = src.replace(/(:|\.)/g, (m) => `<span class="hljs-operator">${m}</span>`);
+
+            // Restore preserved strings
+            src = src.replace(/__STR_(\d+)__/g, (match, idx) => `<span class="hljs-string">${strings[parseInt(idx)]}</span>`);
+
+            return src;
 
             // Helpful diagnostics for user
             let hint = 'Check backend URL, CORS settings, and network connectivity.';
@@ -1738,15 +1781,22 @@
                 const lines = tab.code.split('\n');
                 const lineNumbers = lines.map((_, i) => `<div>${i + 1}</div>`).join('');
                 const highlightedCode = highlightCode(tab.code);
-                
+
+                // Use a scroller element wrapper to improve mobile/desktop scroll behavior
                 container.insertAdjacentHTML('beforeend', `
                     <div class="editor-content" id="${tab.id}">
                         <div class="code-editor">
                             <div class="line-numbers">${lineNumbers}</div>
-                            <div class="code-area">${highlightedCode}</div>
+                            <div class="code-area" role="region" aria-label="Code viewer">${highlightedCode}</div>
                         </div>
                     </div>
                 `);
+
+                // Ensure code-area is scroll-friendly on mobile
+                const codeArea = document.getElementById(tab.id).querySelector('.code-area');
+                if (codeArea) {
+                    codeArea.addEventListener('touchstart', () => {}, { passive: true });
+                }
             }
         }
 
@@ -1869,6 +1919,9 @@
                 showToast('Refreshing', 'Requesting latest data from Studio', 'info');
             } else {
                 showToast('Not Connected', 'Cannot refresh while disconnected', 'error');
+                // Helpful hint in loading overlay
+                const sub = document.getElementById('loadingSubtext');
+                if (sub) sub.textContent = 'Not connected. Check backend URL or run the plugin in Roblox Studio.';
             }
         });
 
@@ -1921,8 +1974,9 @@
         const backdrop = document.getElementById('backdrop');
         
         mobileToggle.addEventListener('click', () => {
-            explorerPanel.classList.toggle('mobile-open');
+            const isOpen = explorerPanel.classList.toggle('mobile-open');
             backdrop.classList.toggle('active');
+            mobileToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
         });
 
         // Close mobile panel when clicking backdrop
