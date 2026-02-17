@@ -4,6 +4,7 @@ import { resolveDatabaseConfig, resolveDatabaseConfigs, type ResolvedDbConfig } 
 
 type PrismaRuntimeState = {
   clients: Map<string, PrismaClient>;
+  unhealthyUrls: Set<string>;
   activeUrl: string;
   activeSource: string;
 };
@@ -17,6 +18,7 @@ function getState(): PrismaRuntimeState {
   if (!global.prismaState) {
     global.prismaState = {
       clients: new Map<string, PrismaClient>(),
+      unhealthyUrls: new Set<string>(),
       activeUrl: '',
       activeSource: ''
     };
@@ -45,6 +47,29 @@ function getClientForUrl(url: string): PrismaClient {
   return client;
 }
 
+async function evictClient(url: string): Promise<void> {
+  const state = getState();
+  const client = state.clients.get(url);
+  state.clients.delete(url);
+
+  if (state.activeUrl === url) {
+    state.activeUrl = '';
+    state.activeSource = '';
+  }
+
+  state.unhealthyUrls.add(url);
+
+  if (!client) {
+    return;
+  }
+
+  try {
+    await client.$disconnect();
+  } catch (disconnectError) {
+    console.error('Failed disconnecting unhealthy Prisma client:', disconnectError);
+  }
+}
+
 function shouldRetryWithFallback(error: unknown): boolean {
   return Boolean(getPrismaAvailabilityIssue(error));
 }
@@ -61,12 +86,15 @@ export async function withDb<T>(operation: (db: PrismaClient, source: string) =>
   const configs = resolveDatabaseConfigs();
 
   const prioritized: ResolvedDbConfig[] = [];
+  const healthyCandidates = configs.filter((item) => !state.unhealthyUrls.has(item.url));
+  const candidatePool = healthyCandidates.length > 0 ? healthyCandidates : configs;
+
   if (state.activeUrl) {
-    const active = configs.find((item) => item.url === state.activeUrl);
+    const active = candidatePool.find((item) => item.url === state.activeUrl);
     if (active) prioritized.push(active);
   }
 
-  for (const config of configs) {
+  for (const config of candidatePool) {
     if (!prioritized.some((item) => item.url === config.url)) {
       prioritized.push(config);
     }
@@ -80,6 +108,7 @@ export async function withDb<T>(operation: (db: PrismaClient, source: string) =>
       const result = await operation(client, config.source);
       state.activeUrl = config.url;
       state.activeSource = config.source;
+      state.unhealthyUrls.delete(config.url);
       return result;
     } catch (error) {
       const issue = getPrismaAvailabilityIssue(error);
@@ -89,6 +118,8 @@ export async function withDb<T>(operation: (db: PrismaClient, source: string) =>
       if (!shouldRetryWithFallback(error)) {
         throw error;
       }
+
+      await evictClient(config.url);
     }
   }
 
