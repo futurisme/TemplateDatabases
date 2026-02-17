@@ -15,8 +15,13 @@ export function toErrorPayload(error: unknown): { status: number; message: strin
     return { status: error.status, message: error.message };
   }
 
+  const isProd = process.env.NODE_ENV === 'production';
+
   if (error instanceof Error) {
-    return { status: 500, message: error.message };
+    return {
+      status: 500,
+      message: isProd ? 'Internal server error' : error.message
+    };
   }
 
   return { status: 500, message: 'Unknown internal error' };

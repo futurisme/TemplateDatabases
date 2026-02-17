@@ -16,6 +16,12 @@ Platform open source global untuk menyimpan template universal (code, ide, cerit
 - Detail template sekarang menggunakan endpoint slug-spesifik (`/api/templates/[slug]`) agar efisien dan konsisten data integrity.
 - Validasi referential integrity ditambahkan pada pembuatan template (owner harus ada) dan contribution (template + user harus ada).
 
+
+## Penyebab 500 di Vercel (Root Cause)
+- Jangan gunakan host private Railway (`*.railway.internal`) pada Vercel karena tidak dapat diakses dari jaringan publik Vercel.
+- Gunakan `DATABASE_URL` public connection string dari Railway (TCP/SSL public), bukan internal DNS URL.
+- Setelah env diperbaiki, homepage tetap tidak akan crash total karena data featured dimuat via client + API dengan error state eksplisit.
+
 ## Fitur Utama
 - Homepage dengan featured templates.
 - Smart search cepat (`/api/search`).

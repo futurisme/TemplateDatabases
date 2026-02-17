@@ -1,18 +1,10 @@
-import { getDb } from '@/lib/db';
 import { NewTemplateForm } from '@/components/NewTemplateForm';
 import { SearchBox } from '@/components/SearchBox';
-import { TemplateCard } from '@/components/TemplateCard';
+import { FeaturedTemplates } from '@/components/FeaturedTemplates';
 
 export const dynamic = 'force-dynamic';
 
-export default async function HomePage() {
-  const featured = await getDb().template.findMany({
-    where: { featured: true },
-    orderBy: { createdAt: 'desc' },
-    take: 6,
-    include: { owner: { select: { displayName: true } } }
-  });
-
+export default function HomePage() {
   return (
     <main>
       <section>
@@ -27,11 +19,7 @@ export default async function HomePage() {
       <div className="space" />
       <section className="card">
         <h2>Featured Templates</h2>
-        <div className="grid">
-          {featured.map((item) => (
-            <TemplateCard key={item.id} template={item} />
-          ))}
-        </div>
+        <FeaturedTemplates />
       </section>
       <div className="space" />
       <NewTemplateForm />
