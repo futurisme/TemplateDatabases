@@ -22,7 +22,11 @@ export function getPrismaAvailabilityIssue(error: unknown): string | null {
   }
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    if (['P1000', 'P1001', 'P1002', 'P1017'].includes(error.code)) {
+    if (error.code === 'P1000') {
+      return 'Database authentication failed (P1000). Verify username/password and that internal/public Railway URLs use identical credentials';
+    }
+
+    if (['P1001', 'P1002', 'P1017'].includes(error.code)) {
       return `Database connectivity issue (${error.code})`;
     }
 

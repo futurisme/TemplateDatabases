@@ -3,8 +3,12 @@ import { AppError } from '@/lib/errors';
 const requiredEnv = ['DATABASE_URL'] as const;
 
 type ParsedDbUrl = {
+  label: string;
   value: string;
   hostname: string;
+  username: string;
+  password: string;
+  database: string;
 };
 
 function parseDbUrl(value: string, label: string): ParsedDbUrl {
@@ -24,18 +28,35 @@ function parseDbUrl(value: string, label: string): ParsedDbUrl {
     throw new AppError(`${label} must use postgres/postgresql protocol`, 503);
   }
 
-  return { value: trimmed, hostname: parsed.hostname.toLowerCase() };
+  return {
+    label,
+    value: trimmed,
+    hostname: parsed.hostname.toLowerCase(),
+    username: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    database: parsed.pathname.replace(/^\//, '')
+  };
 }
 
-function getPublicDbCandidates(): string[] {
-  return [
-    process.env.DATABASE_URL_PUBLIC,
-    process.env.DATABASE_PUBLIC_URL,
-    process.env.POSTGRES_PRISMA_URL,
-    process.env.POSTGRES_URL
-  ]
-    .map((value) => value?.trim())
-    .filter((value): value is string => Boolean(value));
+function getPublicDbCandidates(): ParsedDbUrl[] {
+  const pairs: Array<[string, string | undefined]> = [
+    ['DATABASE_URL_PUBLIC', process.env.DATABASE_URL_PUBLIC],
+    ['DATABASE_PUBLIC_URL', process.env.DATABASE_PUBLIC_URL],
+    ['POSTGRES_PRISMA_URL', process.env.POSTGRES_PRISMA_URL],
+    ['POSTGRES_URL', process.env.POSTGRES_URL]
+  ];
+
+  const seen = new Set<string>();
+  const parsed: ParsedDbUrl[] = [];
+
+  for (const [label, value] of pairs) {
+    const trimmed = value?.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    parsed.push(parseDbUrl(trimmed, label));
+  }
+
+  return parsed;
 }
 
 function isInternalRailwayHost(hostname: string): boolean {
@@ -55,22 +76,32 @@ function ensureSslMode(url: string): string {
   return url;
 }
 
-function selectBestDatabaseUrl(primary: ParsedDbUrl, publicCandidates: string[]): string {
-  const primaryIsInternal = isInternalRailwayHost(primary.hostname);
+function credentialsMatch(left: ParsedDbUrl, right: ParsedDbUrl): boolean {
+  return left.username === right.username && left.password === right.password && left.database === right.database;
+}
 
-  if (!primaryIsInternal) {
+function selectBestDatabaseUrl(primary: ParsedDbUrl, publicCandidates: ParsedDbUrl[]): string {
+  if (!isInternalRailwayHost(primary.hostname)) {
     return ensureSslMode(primary.value);
   }
 
-  for (const candidate of publicCandidates) {
-    const parsedCandidate = parseDbUrl(candidate, 'public database URL');
-    if (!isInternalRailwayHost(parsedCandidate.hostname)) {
-      return ensureSslMode(parsedCandidate.value);
-    }
+  const publicOnly = publicCandidates.filter((candidate) => !isInternalRailwayHost(candidate.hostname));
+
+  if (publicOnly.length === 0) {
+    throw new AppError(
+      'Invalid DB config: DATABASE_URL points to railway.internal but no public DB URL is configured. Set DATABASE_URL_PUBLIC or DATABASE_PUBLIC_URL to Railway public connection string.',
+      503
+    );
   }
 
+  const credentialMatched = publicOnly.find((candidate) => credentialsMatch(primary, candidate));
+  if (credentialMatched) {
+    return ensureSslMode(credentialMatched.value);
+  }
+
+  const labels = publicOnly.map((candidate) => candidate.label).join(', ');
   throw new AppError(
-    'Invalid DB config: DATABASE_URL points to railway.internal but no public DB URL is configured. Set DATABASE_URL_PUBLIC or DATABASE_PUBLIC_URL to Railway public connection string.',
+    `Invalid DB config: none of public DB URLs (${labels}) match DATABASE_URL credentials/database. Ensure username/password/database are identical between internal and public Railway URLs.`,
     503
   );
 }

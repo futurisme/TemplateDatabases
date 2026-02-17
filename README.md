@@ -58,6 +58,8 @@ Contoh konfigurasi yang benar untuk kasus kamu:
 Kesalahan paling umum:
 - `DATABASE_URL` di Vercel diisi URL internal Railway.
 - URL publik tidak menyertakan `sslmode=require` pada endpoint Railway proxy.
+- Password user database pada URL publik berbeda dari URL internal (`P1000 authentication failed`).
+- Terpasang beberapa env URL publik dengan credential berbeda (resolver kini menolak konfigurasi ambigu ini).
 
 Contoh transform URL yang kamu kirim:
 - sebelum: `postgresql://postgres:***@shortline.proxy.rlwy.net:11176/railway`
