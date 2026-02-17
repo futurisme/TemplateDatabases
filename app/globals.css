@@ -147,3 +147,34 @@ button, .button-link {
 .tags-input:focus {
   outline: none;
 }
+
+
+.lang-indicator {
+  margin: 0;
+  font-size: 12px;
+  color: #264a96;
+  font-weight: 600;
+}
+
+.code-preview {
+  margin-top: 8px;
+  border: 1px solid #d6e2fb;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 10px 12px;
+  max-height: 220px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.code-line {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.code-plain { color: #22314f; }
+.code-keyword { color: #7c3aed; font-weight: 700; }
+.code-comment { color: #4f7a46; }
+.code-string { color: #0f766e; }

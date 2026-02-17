@@ -1,26 +1,17 @@
-import { execSync } from 'node:child_process';
+import packageJson from '@/package.json';
 
-function readGitCommitCount(): number | null {
-  try {
-    const output = execSync('git rev-list --count HEAD', {
-      stdio: ['ignore', 'pipe', 'ignore']
-    })
-      .toString()
-      .trim();
+function normalizeVersion(raw: string | undefined): string {
+  if (!raw) return '1.0.0';
 
-    const count = Number.parseInt(output, 10);
-    return Number.isFinite(count) && count > 0 ? count : null;
-  } catch {
-    return null;
+  const normalized = raw.trim();
+  if (!/^\d+\.\d+\.\d+$/.test(normalized)) {
+    return '1.0.0';
   }
+
+  return normalized;
 }
 
 export function getAppVersionLabel(): string {
-  const gitCount = readGitCommitCount();
-
-  if (gitCount !== null) {
-    return `V1.0.${gitCount}`;
-  }
-
-  return 'V1.0.0';
+  const version = normalizeVersion(packageJson.version);
+  return `V${version}`;
 }

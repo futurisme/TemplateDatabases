@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 type CreateTemplateRequest = {
   ownerRef: string;
@@ -17,8 +17,56 @@ type Props = {
   ownerRef: string;
 };
 
+type DetectedLanguage = 'Luau' | 'Python' | 'Unknown';
+
+type HighlightToken = {
+  text: string;
+  className: string;
+};
+
 const ALLOWED_TYPES = new Set<CreateTemplateRequest['type']>(['CODE', 'IDEA', 'STORY', 'OTHER']);
 const TAG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,29}$/i;
+
+const LUAU_KEYWORDS = [
+  'local',
+  'function',
+  'end',
+  'then',
+  'elseif',
+  'repeat',
+  'until',
+  'nil',
+  'not',
+  'and',
+  'or',
+  'pairs',
+  'ipairs',
+  'game',
+  'workspace',
+  'script',
+  'wait',
+  'task'
+];
+
+const PYTHON_KEYWORDS = [
+  'def',
+  'import',
+  'from',
+  'class',
+  'self',
+  'elif',
+  'None',
+  'True',
+  'False',
+  'async',
+  'await',
+  'except',
+  'lambda',
+  'with',
+  'yield',
+  'print',
+  '__name__'
+];
 
 function parseTags(raw: string): string[] {
   return raw
@@ -58,6 +106,89 @@ function validateRequestBody(body: CreateTemplateRequest): string | null {
   return errors.length > 0 ? errors.join(' ') : null;
 }
 
+function countMatches(content: string, patterns: RegExp[]): number {
+  return patterns.reduce((acc, pattern) => {
+    const matches = content.match(pattern);
+    return acc + (matches ? matches.length : 0);
+  }, 0);
+}
+
+function detectLanguage(content: string): DetectedLanguage {
+  const luauScore =
+    countMatches(content, [
+      /--.*$/gm,
+      /\b(local|function|end|then|elseif|repeat|until|pairs|ipairs)\b/g,
+      /\b(game|workspace|script|task)\b/g,
+      /\b[A-Z][A-Za-z0-9_]*\.new\(/g
+    ]) + LUAU_KEYWORDS.filter((keyword) => content.includes(keyword)).length;
+
+  const pythonScore =
+    countMatches(content, [
+      /#.*$/gm,
+      /\b(def|import|from|class|elif|except|lambda|with|yield|async|await)\b/g,
+      /:\s*$/gm,
+      /\bself\./g
+    ]) + PYTHON_KEYWORDS.filter((keyword) => content.includes(keyword)).length;
+
+  if (luauScore === 0 && pythonScore === 0) return 'Unknown';
+  if (luauScore === pythonScore) return 'Unknown';
+
+  return luauScore > pythonScore ? 'Luau' : 'Python';
+}
+
+function tokenizeLine(line: string, language: DetectedLanguage): HighlightToken[] {
+  if (!line) return [{ text: ' ', className: 'code-plain' }];
+
+  const stringRegex = /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
+  const parts = line.split(stringRegex);
+  const tokens: HighlightToken[] = [];
+
+  for (const part of parts) {
+    if (!part) continue;
+
+    if ((part.startsWith('"') && part.endsWith('"')) || (part.startsWith("'") && part.endsWith("'"))) {
+      tokens.push({ text: part, className: 'code-string' });
+      continue;
+    }
+
+    const commentIndex =
+      language === 'Luau' ? part.indexOf('--') : language === 'Python' ? part.indexOf('#') : Number.POSITIVE_INFINITY;
+
+    const beforeComment = Number.isFinite(commentIndex) ? part.slice(0, commentIndex) : part;
+    const comment = Number.isFinite(commentIndex) ? part.slice(commentIndex) : '';
+
+    const keywordSet = language === 'Luau' ? LUAU_KEYWORDS : language === 'Python' ? PYTHON_KEYWORDS : [];
+    const keywordRegex = keywordSet.length ? new RegExp(`\\b(${keywordSet.join('|')})\\b`, 'g') : null;
+
+    if (keywordRegex) {
+      let lastIndex = 0;
+      for (const match of beforeComment.matchAll(keywordRegex)) {
+        const start = match.index ?? 0;
+        if (start > lastIndex) {
+          tokens.push({ text: beforeComment.slice(lastIndex, start), className: 'code-plain' });
+        }
+        tokens.push({ text: match[0], className: 'code-keyword' });
+        lastIndex = start + match[0].length;
+      }
+      if (lastIndex < beforeComment.length) {
+        tokens.push({ text: beforeComment.slice(lastIndex), className: 'code-plain' });
+      }
+    } else {
+      tokens.push({ text: beforeComment, className: 'code-plain' });
+    }
+
+    if (comment) {
+      tokens.push({ text: comment, className: 'code-comment' });
+    }
+  }
+
+  return tokens.length > 0 ? tokens : [{ text: line, className: 'code-plain' }];
+}
+
+function highlightContent(content: string, language: DetectedLanguage): HighlightToken[][] {
+  return content.split('\n').slice(0, 120).map((line) => tokenizeLine(line, language));
+}
+
 async function parseErrorResponse(response: Response): Promise<string> {
   const contentType = response.headers.get('content-type') ?? '';
 
@@ -82,6 +213,18 @@ async function parseErrorResponse(response: Response): Promise<string> {
 export function NewTemplateForm({ ownerRef }: Props) {
   const [status, setStatus] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedType, setSelectedType] = useState<CreateTemplateRequest['type']>('CODE');
+  const [contentDraft, setContentDraft] = useState('');
+
+  const detectedLanguage = useMemo(() => {
+    if (selectedType !== 'CODE') return 'Unknown';
+    return detectLanguage(contentDraft);
+  }, [contentDraft, selectedType]);
+
+  const highlightedLines = useMemo(() => {
+    if (selectedType !== 'CODE') return [];
+    return highlightContent(contentDraft, detectedLanguage);
+  }, [contentDraft, detectedLanguage, selectedType]);
 
   async function submit(formData: FormData) {
     if (isSubmitting) return;
@@ -140,9 +283,37 @@ export function NewTemplateForm({ ownerRef }: Props) {
           minLength={10}
           rows={6}
           disabled={isSubmitting}
+          value={contentDraft}
+          onChange={(event) => setContentDraft(event.target.value)}
         />
+        {selectedType === 'CODE' && (
+          <>
+            <div className="space" />
+            <p className="lang-indicator">Detected language: {detectedLanguage}</p>
+            <div className="code-preview" aria-live="polite">
+              {highlightedLines.length === 0 ? (
+                <p className="muted">Live syntax highlight aktif saat Anda mulai mengetik kode.</p>
+              ) : (
+                highlightedLines.map((line, lineIndex) => (
+                  <div key={`line-${lineIndex}`} className="code-line">
+                    {line.map((token, tokenIndex) => (
+                      <span key={`token-${lineIndex}-${tokenIndex}`} className={token.className}>
+                        {token.text}
+                      </span>
+                    ))}
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
         <div className="space" />
-        <select name="type" defaultValue="CODE" disabled={isSubmitting}>
+        <select
+          name="type"
+          value={selectedType}
+          disabled={isSubmitting}
+          onChange={(event) => setSelectedType((event.target.value as CreateTemplateRequest['type']) || 'OTHER')}
+        >
           <option value="CODE">CODE</option>
           <option value="IDEA">IDEA</option>
           <option value="STORY">STORY</option>
