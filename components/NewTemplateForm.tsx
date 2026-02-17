@@ -11,42 +11,45 @@ type CreateTemplateRequest = {
   tags: string[];
 };
 
-type ApiError = { error?: string };
+type ErrorResponse = { error?: string };
 
 const ALLOWED_TYPES = new Set<CreateTemplateRequest['type']>(['CODE', 'IDEA', 'STORY', 'OTHER']);
 
-function buildPayload(formData: FormData): CreateTemplateRequest {
-  const ownerRef = String(formData.get('ownerRef') ?? '').trim();
-  const title = String(formData.get('title') ?? '').trim();
-  const summary = String(formData.get('summary') ?? '').trim();
-  const content = String(formData.get('content') ?? '').trim();
-  const typeRaw = String(formData.get('type') ?? 'OTHER').trim().toUpperCase();
-  const tags = String(formData.get('tags') ?? '')
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  const errors: string[] = [];
-
-  if (ownerRef.length < 2 || ownerRef.length > 64) errors.push('ownerRef harus 2-64 karakter.');
-  if (title.length < 3 || title.length > 120) errors.push('judul harus 3-120 karakter.');
-  if (summary.length < 10 || summary.length > 300) errors.push('ringkasan harus 10-300 karakter.');
-  if (content.length < 10) errors.push('isi template minimal 10 karakter.');
-  if (!ALLOWED_TYPES.has(typeRaw as CreateTemplateRequest['type'])) errors.push('tipe template tidak valid.');
-  if (tags.length === 0 || tags.length > 12) errors.push('tag harus 1-12 item.');
-
-  if (errors.length > 0) {
-    throw new Error(errors.join(' '));
-  }
+function buildCreateTemplateRequest(formData: FormData): CreateTemplateRequest {
+  const rawType = String(formData.get('type') ?? 'OTHER').trim().toUpperCase();
 
   return {
-    ownerRef,
-    title,
-    summary,
-    content,
-    type: typeRaw as CreateTemplateRequest['type'],
-    tags
+    ownerRef: String(formData.get('ownerRef') ?? '').trim(),
+    title: String(formData.get('title') ?? '').trim(),
+    summary: String(formData.get('summary') ?? '').trim(),
+    content: String(formData.get('content') ?? '').trim(),
+    type: ALLOWED_TYPES.has(rawType as CreateTemplateRequest['type'])
+      ? (rawType as CreateTemplateRequest['type'])
+      : 'OTHER',
+    tags: String(formData.get('tags') ?? '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
   };
+}
+
+async function parseErrorResponse(response: Response): Promise<string> {
+  const contentType = response.headers.get('content-type') ?? '';
+
+  if (!contentType.includes('application/json')) {
+    return `Request gagal (${response.status} ${response.statusText}).`;
+  }
+
+  try {
+    const parsed = (await response.json()) as ErrorResponse;
+    if (parsed.error && parsed.error.trim().length > 0) {
+      return parsed.error.trim();
+    }
+  } catch (error) {
+    console.error('Failed to parse API error response:', error);
+  }
+
+  return `Request gagal (${response.status} ${response.statusText}).`;
 }
 
 export function NewTemplateForm() {
@@ -54,37 +57,28 @@ export function NewTemplateForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function submit(formData: FormData) {
-    if (isSubmitting) {
-      return;
-    }
+    if (isSubmitting) return;
 
-    setIsSubmitting(true);
     setStatus('');
+    setIsSubmitting(true);
 
     try {
-      const requestPayload = buildPayload(formData);
+      const requestBody = buildCreateTemplateRequest(formData);
 
       const response = await fetch('/api/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestPayload)
+        body: JSON.stringify(requestBody)
       });
 
-      const contentType = response.headers.get('content-type') ?? '';
-      const responseBody: ApiError | null = contentType.includes('application/json')
-        ? ((await response.json()) as ApiError)
-        : null;
-
       if (!response.ok) {
-        const apiMessage = responseBody?.error?.trim();
-        throw new Error(apiMessage || 'Gagal membuat template. Periksa data lalu coba lagi.');
+        throw new Error(await parseErrorResponse(response));
       }
 
       setStatus('Template berhasil dibuat.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga.';
       console.error('Submit template failed:', error);
-      setStatus(message);
+      setStatus(error instanceof Error ? error.message : 'Terjadi kesalahan tak terduga.');
     } finally {
       setIsSubmitting(false);
     }
