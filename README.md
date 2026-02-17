@@ -47,9 +47,15 @@ Atur env berikut:
 - `POSTGRES_PRISMA_URL`
 - `POSTGRES_URL`
 
-Resolver runtime memilih kandidat public di atas saat:
-- runtime = Vercel, dan
-- host `DATABASE_URL` berakhiran `.railway.internal`.
+Resolver runtime sekarang selalu memprioritaskan URL publik bila `DATABASE_URL` mengarah ke host internal (`*.railway.internal`) agar aman untuk Vercel maupun runtime publik lain.
+
+Contoh konfigurasi yang benar untuk kasus kamu:
+- `DATABASE_URL=postgresql://postgres:***@postgres.railway.internal:5432/railway` (internal Railway)
+- `DATABASE_PUBLIC_URL=postgresql://postgres:***@shortline.proxy.rlwy.net:11176/railway?sslmode=require` (publik untuk Vercel)
+
+Kesalahan paling umum:
+- `DATABASE_URL` di Vercel diisi URL internal Railway.
+- URL publik tidak menyertakan `sslmode=require` pada endpoint Railway proxy.
 
 ### C. Setup Deploy di Vercel
 1. Import repo ke Vercel.
