@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { VersionBadge } from '@/components/VersionBadge';
 
 export const metadata: Metadata = {
   title: 'TemplateDatabase - Global Open Source Template Hub',
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id">
-      <body>{children}</body>
+      <body>
+        {children}
+        <VersionBadge />
+      </body>
     </html>
   );
 }

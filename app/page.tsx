@@ -1,4 +1,4 @@
-import { NewTemplateForm } from '@/components/NewTemplateForm';
+import Link from 'next/link';
 import { SearchBox } from '@/components/SearchBox';
 import { FeaturedTemplates } from '@/components/FeaturedTemplates';
 
@@ -6,23 +6,30 @@ export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
   return (
-    <main>
-      <section>
-        <h1>TemplateDatabase</h1>
-        <p className="muted">
-          Open source template hub global: simpan template universal (kode, ide, cerita, dan lainnya)
-          dengan performa ringan, smart search, dan deployment 100% free-tier friendly (Vercel + Railway).
+    <main className="page-shell">
+      <section className="hero card compact">
+        <p className="badge">TemplateDatabase</p>
+        <h1>Temukan template terbaik secepat mesin pencari modern.</h1>
+        <p className="muted hero-copy">
+          Fokus utama pada pencarian cepat dan koleksi featured. Kontribusi template kini dipisah agar halaman utama
+          lebih ringkas dan nyaman digunakan.
         </p>
+        <div className="hero-cta">
+          <Link href="/contribute" className="button-link">
+            Contribute Template
+          </Link>
+        </div>
       </section>
-      <div className="space" />
-      <SearchBox />
-      <div className="space" />
-      <section className="card">
-        <h2>Featured Templates</h2>
-        <FeaturedTemplates />
+
+      <section className="panel-grid">
+        <div className="panel-main">
+          <SearchBox />
+        </div>
+        <aside className="panel-side card compact">
+          <h2>Featured Templates</h2>
+          <FeaturedTemplates />
+        </aside>
       </section>
-      <div className="space" />
-      <NewTemplateForm />
     </main>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TemplateCard } from './TemplateCard';
+import { TemplateCard } from '@/components/TemplateCard';
 
 type SearchResult = {
   id: string;
@@ -10,7 +10,7 @@ type SearchResult = {
   summary: string;
   type: string;
   tags: string[];
-  score: number;
+  owner?: { displayName: string };
 };
 
 export function SearchBox() {
@@ -19,14 +19,14 @@ export function SearchBox() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setError('');
+      return;
+    }
+
     const ctrl = new AbortController();
     const timer = setTimeout(async () => {
-      if (query.trim().length < 2) {
-        setResults([]);
-        setError('');
-        return;
-      }
-
       const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal: ctrl.signal, cache: 'no-store' });
       const payload = (await res.json().catch(() => ({ error: `Invalid API response (${res.status})` }))) as
         | SearchResult[]
@@ -40,7 +40,7 @@ export function SearchBox() {
 
       setError('');
       setResults(Array.isArray(payload) ? payload : []);
-    }, 160);
+    }, 140);
 
     return () => {
       ctrl.abort();
@@ -49,14 +49,13 @@ export function SearchBox() {
   }, [query]);
 
   return (
-    <section className="card">
-      <h2>Smart Search</h2>
+    <section className="card compact search-shell">
+      <h2>Search</h2>
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Cari template: code, ide, cerita, dll..."
       />
-      <div className="space" />
       {error && <p className="muted">{error}</p>}
       {results.length > 0 && (
         <div className="grid">
