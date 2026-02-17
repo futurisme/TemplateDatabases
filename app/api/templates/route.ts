@@ -1,50 +1,92 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { Prisma } from '@prisma/client';
+import { getDb } from '@/lib/db';
 import { createTemplateSchema } from '@/lib/types';
 import { compactText, slugify } from '@/lib/utils';
-import { fallbackTemplates } from '@/lib/fallback';
+import { AppError, toErrorPayload } from '@/lib/errors';
 
 export const revalidate = 0;
 
+async function createWithUniqueSlug(payload: {
+  title: string;
+  summary: string;
+  content: string;
+  type: 'CODE' | 'IDEA' | 'STORY' | 'OTHER';
+  tags: string[];
+  ownerId: string;
+  featured?: boolean;
+}) {
+  const base = slugify(payload.title);
+  for (let i = 0; i < 5; i += 1) {
+    const slug = i === 0 ? base : `${base}-${crypto.randomUUID().slice(0, 6)}`;
+    try {
+      return await getDb().template.create({
+        data: {
+          ...payload,
+          slug,
+          searchDocument: compactText(payload.title, payload.summary, payload.content, payload.tags.join(' '))
+        }
+      });
+    } catch (error) {
+      const isConflict =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        String(error.meta?.target).includes('slug');
+
+      if (!isConflict) {
+        throw error;
+      }
+    }
+  }
+
+  throw new AppError('Failed to generate unique slug after multiple attempts', 409);
+}
+
 export async function GET(req: NextRequest) {
-  const featuredOnly = req.nextUrl.searchParams.get('featured') === '1';
-  const data = await db.template
-    .findMany({
+  try {
+    const featuredOnly = req.nextUrl.searchParams.get('featured') === '1';
+    const data = await getDb().template.findMany({
       where: featuredOnly ? { featured: true } : undefined,
       orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
       take: featuredOnly ? 8 : 50,
       include: { owner: { select: { id: true, username: true, displayName: true } } }
-    })
-    .catch(() => fallbackTemplates);
-  return NextResponse.json(data, {
-    headers: {
-      'Cache-Control': featuredOnly
-        ? 'public, s-maxage=120, stale-while-revalidate=300'
-        : 'no-store'
-    }
-  });
+    });
+
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': featuredOnly
+          ? 'public, s-maxage=120, stale-while-revalidate=300'
+          : 'no-store'
+      }
+    });
+  } catch (error) {
+    const payload = toErrorPayload(error);
+    console.error('GET /api/templates failed:', error);
+    return NextResponse.json({ error: payload.message }, { status: payload.status });
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const parsed = createTemplateSchema.safeParse(body);
+  try {
+    const body = await req.json();
+    const parsed = createTemplateSchema.safeParse(body);
 
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  }
-
-  const payload = parsed.data;
-  const slugBase = slugify(payload.title);
-  const similarCount = await db.template.count({ where: { slug: { startsWith: slugBase } } });
-  const slug = similarCount === 0 ? slugBase : `${slugBase}-${similarCount + 1}`;
-
-  const created = await db.template.create({
-    data: {
-      ...payload,
-      slug,
-      searchDocument: compactText(payload.title, payload.summary, payload.content, payload.tags.join(' '))
+    if (!parsed.success) {
+      throw new AppError('Invalid request payload', 400);
     }
-  });
 
-  return NextResponse.json(created, { status: 201 });
+    const owner = await getDb().user.findUnique({ where: { id: parsed.data.ownerId }, select: { id: true } });
+    if (!owner) {
+      throw new AppError('Owner not found', 404);
+    }
+
+    const created = await createWithUniqueSlug(parsed.data);
+    return NextResponse.json(created, { status: 201 });
+  } catch (error) {
+    const payload = toErrorPayload(error);
+    console.error('POST /api/templates failed:', error);
+    return NextResponse.json({ error: payload.message }, { status: payload.status });
+  }
 }

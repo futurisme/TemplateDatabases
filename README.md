@@ -3,10 +3,18 @@
 Platform open source global untuk menyimpan template universal (code, ide, cerita, dll) dengan performa ringan, smart search, featured templates, tombol copy, dan alur contribute.
 
 ## Stack Produksi (100% free-tier)
-- **Frontend + API**: Next.js 14 di **Vercel**
+- **Frontend + API**: Next.js 14.2.35 di **Vercel**
 - **Database**: PostgreSQL di **Railway Cloud Database**
 - **ORM**: Prisma
 - **Search**: PostgreSQL full-text + ranking
+
+## Audit Arsitektur & Perbaikan Root Cause
+- Dependency vulnerability diperbaiki di level akar dengan upgrade `next` dan `eslint-config-next` ke `14.2.35`.
+- Fallback data in-memory yang menutupi error DB dihapus agar tidak ada silent failure.
+- Error handling backend dibuat eksplisit dengan typed errors dan HTTP status yang konsisten.
+- Potensi race condition slug creation diselesaikan dengan retry strategy terhadap unique constraint conflict.
+- Detail template sekarang menggunakan endpoint slug-spesifik (`/api/templates/[slug]`) agar efisien dan konsisten data integrity.
+- Validasi referential integrity ditambahkan pada pembuatan template (owner harus ada) dan contribution (template + user harus ada).
 
 ## Fitur Utama
 - Homepage dengan featured templates.
@@ -48,7 +56,7 @@ npm run db:seed
 ## Struktur
 - `app/` Next.js pages + API routes.
 - `components/` UI modular ringan.
-- `lib/` utilitas, validasi schema, DB client.
+- `lib/` utilitas, validasi schema, error handling, DB client.
 - `prisma/` schema database dan seed data.
 
 ## Catatan Open Source

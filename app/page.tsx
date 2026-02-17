@@ -1,20 +1,17 @@
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { NewTemplateForm } from '@/components/NewTemplateForm';
 import { SearchBox } from '@/components/SearchBox';
 import { TemplateCard } from '@/components/TemplateCard';
-import { fallbackTemplates } from '@/lib/fallback';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  const featured = await db.template
-    .findMany({
-      where: { featured: true },
-      orderBy: { createdAt: 'desc' },
-      take: 6,
-      include: { owner: { select: { displayName: true } } }
-    })
-    .catch(() => fallbackTemplates);
+  const featured = await getDb().template.findMany({
+    where: { featured: true },
+    orderBy: { createdAt: 'desc' },
+    take: 6,
+    include: { owner: { select: { displayName: true } } }
+  });
 
   return (
     <main>

@@ -11,7 +11,7 @@ type Template = {
   type: string;
   tags: string[];
   ownerId: string;
-  owner: { displayName: string; username: string };
+  owner: { id: string; displayName: string; username: string };
 };
 
 export default function TemplateDetail({ params }: { params: { slug: string } }) {
@@ -19,6 +19,7 @@ export default function TemplateDetail({ params }: { params: { slug: string } })
   const [userId, setUserId] = useState('');
   const [note, setNote] = useState('');
   const [info, setInfo] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const stored = localStorage.getItem('tdb-user-id') ?? '';
@@ -26,9 +27,38 @@ export default function TemplateDetail({ params }: { params: { slug: string } })
   }, []);
 
   useEffect(() => {
-    fetch('/api/templates')
-      .then((r) => r.json())
-      .then((all: Template[]) => setTemplate(all.find((x) => x.slug === params.slug) ?? null));
+    let mounted = true;
+
+    async function loadTemplate() {
+      setLoading(true);
+      setInfo('');
+      const res = await fetch(`/api/templates/${encodeURIComponent(params.slug)}`);
+      const payload = await res.json();
+      if (!mounted) return;
+
+      if (!res.ok) {
+        setTemplate(null);
+        setInfo(payload.error ?? 'Gagal memuat template');
+        setLoading(false);
+        return;
+      }
+
+      setTemplate(payload as Template);
+      setLoading(false);
+    }
+
+    loadTemplate().catch((error: unknown) => {
+      console.error('Template detail load failed:', error);
+      if (mounted) {
+        setTemplate(null);
+        setInfo(error instanceof Error ? error.message : 'Unknown load error');
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+    };
   }, [params.slug]);
 
   const canContribute = useMemo(() => {
@@ -49,13 +79,23 @@ export default function TemplateDetail({ params }: { params: { slug: string } })
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ templateId: template.id, userId, message: note || 'Contribute request' })
     });
-    setInfo(res.ok ? 'Permintaan contribute terkirim.' : 'Gagal mengirim kontribusi.');
+    const payload = await res.json();
+    setInfo(res.ok ? 'Permintaan contribute terkirim.' : payload.error ?? 'Gagal mengirim kontribusi.');
+  }
+
+  if (loading) {
+    return (
+      <main>
+        <p>Loading template...</p>
+      </main>
+    );
   }
 
   if (!template) {
     return (
       <main>
         <p>Template tidak ditemukan.</p>
+        {info && <p className="muted">{info}</p>}
       </main>
     );
   }
@@ -68,10 +108,14 @@ export default function TemplateDetail({ params }: { params: { slug: string } })
         <p>Owner: {template.owner.displayName}</p>
         <div className="row" style={{ flexWrap: 'wrap' }}>
           {template.tags.map((tag) => (
-            <small key={tag} className="muted">#{tag}</small>
+            <small key={tag} className="muted">
+              #{tag}
+            </small>
           ))}
         </div>
-        <pre className="card" style={{ whiteSpace: 'pre-wrap' }}>{template.content}</pre>
+        <pre className="card" style={{ whiteSpace: 'pre-wrap' }}>
+          {template.content}
+        </pre>
         <div className="row">
           <button onClick={copyTemplate}>Copy</button>
           {canContribute && <button onClick={sendContribution}>Contribute</button>}
