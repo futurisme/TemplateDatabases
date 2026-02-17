@@ -53,6 +53,11 @@ npm run dev
 3. Build command: `npm run build`
 4. Start command: `npm run start`
 
+### 2b) Railway Runtime (opsional service app)
+- Repo ini menyediakan `nixpacks.toml` + `railway.toml` agar Railway menjalankan app tanpa wrapper `npm start` (menghindari noise SIGTERM dari npm).
+- Health check endpoint: `/api/health`.
+- Start command: `next start -p ${PORT:-8080}`.
+
 ### 3) Migrasi
 Jalankan di Vercel post-deploy atau CI:
 ```bash
