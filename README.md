@@ -13,8 +13,9 @@ Kasus `/api/templates?featured=1` menghasilkan 503 umumnya karena kombinasi ini:
 1. **Vercel membaca `DATABASE_URL` internal Railway** (`*.railway.internal`) yang tidak bisa diakses dari jaringan publik Vercel.
 2. **Schema DB belum sinkron** saat route dipanggil (startup race sebelum migrasi diterapkan).
 3. **Runtime install mode production** menghilangkan binary yang dibutuhkan bootstrap kalau dependency salah tempat.
-4. **Fallback featured list ada, tapi detail slug fallback ikut query DB** sehingga klik card fallback bisa gagal jika tidak ada fallback detail handler.
-5. **Prisma client dibuat ulang terlalu sering di runtime** dapat memicu lonjakan koneksi dan kegagalan inisialisasi DB (`503`) pada traffic burst/cold start beruntun.
+4. **Bundler Next.js tidak menyertakan Prisma Query Engine** (`libquery_engine-*.so.node`) untuk target runtime Linux (`rhel-openssl-3.0.x`).
+5. **Fallback featured list ada, tapi detail slug fallback ikut query DB** sehingga klik card fallback bisa gagal jika tidak ada fallback detail handler.
+6. **Prisma client dibuat ulang terlalu sering di runtime** dapat memicu lonjakan koneksi dan kegagalan inisialisasi DB (`503`) pada traffic burst/cold start beruntun.
 
 Perbaikan final pada codebase ini:
 - Resolver DB otomatis memilih public DB URL env saat runtime Vercel + internal host terdeteksi.
@@ -23,6 +24,8 @@ Perbaikan final pada codebase ini:
 - Migration history disimpan di repo (`prisma/migrations`).
 - Featured endpoint punya controlled fallback dan detail fallback slug juga tersedia.
 - Error handling strict + eksplisit (tanpa silent catch suppression).
+- Prisma client generator sekarang menyertakan `binaryTargets` untuk runtime Linux production (`rhel-openssl-3.0.x`) agar query engine tersedia di deploy serverless.
+- Next config menandai `@prisma/client` sebagai `serverExternalPackages` dan menambahkan `outputFileTracingIncludes` untuk `.prisma/client` supaya engine tidak terbuang saat bundling.
 
 ---
 

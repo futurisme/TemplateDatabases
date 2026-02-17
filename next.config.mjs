@@ -4,7 +4,10 @@ const nextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   experimental: {
-    optimizePackageImports: ['@prisma/client']
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+    outputFileTracingIncludes: {
+      '/**': ['./node_modules/.prisma/client/**']
+    }
   }
 };
 
