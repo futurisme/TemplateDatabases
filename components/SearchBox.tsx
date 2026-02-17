@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { TemplateCard } from '@/components/TemplateCard';
 
 type SearchResult = {
@@ -13,40 +13,101 @@ type SearchResult = {
   owner?: { displayName: string };
 };
 
+type SearchPayload = SearchResult[] | { error?: string };
+
+const searchCache = new Map<string, SearchResult[]>();
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
+function normalizeQuery(raw: string): string {
+  return raw.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
 export function SearchBox() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [error, setError] = useState('');
+  const latestRequestId = useRef(0);
+
+  const normalizedQuery = useMemo(() => normalizeQuery(query), [query]);
 
   useEffect(() => {
-    if (!query.trim()) {
+    if (!normalizedQuery) {
       setResults([]);
       setError('');
       return;
     }
 
-    const ctrl = new AbortController();
-    const timer = setTimeout(async () => {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal: ctrl.signal, cache: 'no-store' });
-      const payload = (await res.json().catch(() => ({ error: `Invalid API response (${res.status})` }))) as
-        | SearchResult[]
-        | { error?: string };
+    if (normalizedQuery.length < 2) {
+      setResults([]);
+      setError('Masukkan minimal 2 karakter.');
+      return;
+    }
 
-      if (!res.ok) {
-        setResults([]);
-        setError(Array.isArray(payload) ? `Request failed (${res.status})` : payload.error ?? 'Search request failed');
-        return;
-      }
-
+    const cached = searchCache.get(normalizedQuery);
+    if (cached) {
+      setResults(cached);
       setError('');
-      setResults(Array.isArray(payload) ? payload : []);
-    }, 140);
+      return;
+    }
+
+    const ctrl = new AbortController();
+    const requestId = latestRequestId.current + 1;
+    latestRequestId.current = requestId;
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(normalizedQuery)}`, {
+          signal: ctrl.signal,
+          cache: 'force-cache'
+        });
+
+        const text = await res.text();
+        let payload: SearchPayload;
+        try {
+          payload = text ? (JSON.parse(text) as SearchPayload) : [];
+        } catch (parseError) {
+          console.error('Invalid search API JSON payload:', parseError, text);
+          payload = { error: `Invalid API response (${res.status})` };
+        }
+
+        if (latestRequestId.current !== requestId) {
+          return;
+        }
+
+        if (!res.ok) {
+          setResults([]);
+          setError(Array.isArray(payload) ? `Request failed (${res.status})` : payload.error ?? 'Search request failed');
+          return;
+        }
+
+        const nextResults = Array.isArray(payload) ? payload : [];
+        searchCache.set(normalizedQuery, nextResults);
+        setError('');
+        setResults(nextResults);
+      } catch (requestError) {
+        if (isAbortError(requestError)) {
+          return;
+        }
+
+        console.error('Search request failed:', requestError);
+
+        if (latestRequestId.current !== requestId) {
+          return;
+        }
+
+        setResults([]);
+        setError(requestError instanceof Error ? requestError.message : 'Search request failed');
+      }
+    }, 60);
 
     return () => {
       ctrl.abort();
-      clearTimeout(timer);
+      window.clearTimeout(timer);
     };
-  }, [query]);
+  }, [normalizedQuery]);
 
   return (
     <section className="card compact search-shell">

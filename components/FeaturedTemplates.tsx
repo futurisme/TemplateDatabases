@@ -16,13 +16,18 @@ type Item = {
 
 type ApiPayload = Item[] | { error?: string };
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
 async function readJsonSafe(res: Response): Promise<ApiPayload> {
   const text = await res.text();
   if (!text) return [];
 
   try {
     return JSON.parse(text) as ApiPayload;
-  } catch {
+  } catch (error) {
+    console.error('Invalid featured templates JSON payload:', error, text);
     return { error: `Invalid API response (${res.status})` };
   }
 }
@@ -34,37 +39,61 @@ export function FeaturedTemplates() {
 
   useEffect(() => {
     const ctrl = new AbortController();
+    let mounted = true;
 
     async function load() {
+      if (!mounted) return;
       setLoading(true);
       setError('');
 
-      const res = await fetch('/api/templates?featured=1', {
-        signal: ctrl.signal,
-        cache: 'no-store'
-      });
+      try {
+        const res = await fetch('/api/templates?featured=1', {
+          signal: ctrl.signal,
+          cache: 'force-cache'
+        });
 
-      const payload = await readJsonSafe(res);
+        const payload = await readJsonSafe(res);
 
-      if (!res.ok) {
+        if (!res.ok) {
+          if (!mounted) return;
+          setItems([]);
+          setError(Array.isArray(payload) ? `Request failed (${res.status})` : payload.error ?? 'Gagal memuat featured templates');
+          return;
+        }
+
+        if (!mounted) return;
+        setItems(Array.isArray(payload) ? payload : []);
+      } catch (err: unknown) {
+        if (isAbortError(err)) {
+          return;
+        }
+
+        console.error('Featured templates fetch failed:', err);
+        if (!mounted) return;
         setItems([]);
-        setError(Array.isArray(payload) ? `Request failed (${res.status})` : payload.error ?? 'Gagal memuat featured templates');
-        setLoading(false);
+        setError(err instanceof Error ? err.message : 'Unknown frontend error');
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    load().catch((error: unknown) => {
+      if (isAbortError(error)) {
         return;
       }
 
-      setItems(Array.isArray(payload) ? payload : []);
-      setLoading(false);
-    }
-
-    load().catch((err: unknown) => {
-      console.error('Featured templates fetch failed:', err);
-      setItems([]);
-      setError(err instanceof Error ? err.message : 'Unknown frontend error');
+      console.error('Unexpected featured templates load error:', error);
+      if (!mounted) return;
+      setError(error instanceof Error ? error.message : 'Unknown frontend error');
       setLoading(false);
     });
 
-    return () => ctrl.abort();
+    return () => {
+      mounted = false;
+      ctrl.abort();
+    };
   }, []);
 
   if (loading) {

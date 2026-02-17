@@ -2,35 +2,52 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withDb } from '@/lib/db';
-import { toErrorPayload } from '@/lib/errors';
+import { AppError, toErrorPayload } from '@/lib/errors';
+
+function sanitizeQuery(input: string): string {
+  return input.trim().replace(/\s+/g, ' ');
+}
 
 export async function GET(req: NextRequest) {
   try {
-    const q = req.nextUrl.searchParams.get('q')?.trim() ?? '';
+    const q = sanitizeQuery(req.nextUrl.searchParams.get('q') ?? '');
 
     if (q.length < 2) {
-      return NextResponse.json([]);
+      return NextResponse.json([], {
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60'
+        }
+      });
+    }
+
+    if (q.length > 120) {
+      throw new AppError('Kueri pencarian terlalu panjang (maksimal 120 karakter).', 400);
     }
 
     const rows = await withDb((db) =>
       db.$queryRaw`
-      SELECT
-        id,
-        slug,
-        title,
-        summary,
-        type,
-        tags,
-        ts_rank(
-          to_tsvector('simple', "searchDocument"),
-          websearch_to_tsquery('simple', ${q})
-        ) +
-        CASE WHEN title ILIKE ${`%${q}%`} THEN 0.35 ELSE 0 END +
-        CASE WHEN summary ILIKE ${`%${q}%`} THEN 0.15 ELSE 0 END AS score
-      FROM "Template"
-      WHERE to_tsvector('simple', "searchDocument") @@ websearch_to_tsquery('simple', ${q})
-        OR title ILIKE ${`%${q}%`}
-        OR summary ILIKE ${`%${q}%`}
+      WITH ranked AS (
+        SELECT
+          id,
+          slug,
+          title,
+          summary,
+          type,
+          tags,
+          ts_rank_cd(
+            to_tsvector('simple', "searchDocument"),
+            websearch_to_tsquery('simple', ${q})
+          )
+          + similarity(title, ${q}) * 0.8
+          + similarity(summary, ${q}) * 0.35 AS score,
+          "createdAt"
+        FROM "Template"
+        WHERE to_tsvector('simple', "searchDocument") @@ websearch_to_tsquery('simple', ${q})
+           OR title % ${q}
+           OR summary % ${q}
+      )
+      SELECT id, slug, title, summary, type, tags
+      FROM ranked
       ORDER BY score DESC, "createdAt" DESC
       LIMIT 20;
     `
@@ -38,7 +55,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(rows, {
       headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120'
+        'Cache-Control': 'public, s-maxage=180, stale-while-revalidate=600'
       }
     });
   } catch (error) {
