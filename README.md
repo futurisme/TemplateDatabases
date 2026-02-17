@@ -57,6 +57,10 @@ Kesalahan paling umum:
 - `DATABASE_URL` di Vercel diisi URL internal Railway.
 - URL publik tidak menyertakan `sslmode=require` pada endpoint Railway proxy.
 
+Contoh transform URL yang kamu kirim:
+- sebelum: `postgresql://postgres:***@shortline.proxy.rlwy.net:11176/railway`
+- sesudah: `postgresql://postgres:***@shortline.proxy.rlwy.net:11176/railway?sslmode=require`
+
 ### C. Setup Deploy di Vercel
 1. Import repo ke Vercel.
 2. Set environment variables di Project Settings.
