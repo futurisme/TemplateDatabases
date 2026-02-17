@@ -12,6 +12,7 @@ type ResolvedDbConfig = {
   url: string;
   source: string;
   hostname: string;
+  runtime: 'vercel' | 'server';
 };
 
 function parseDbUrl(rawValue: string, label: string): ParsedDbUrl {
@@ -70,31 +71,46 @@ function getExplicitPublicCandidate(): ParsedDbUrl | null {
   return null;
 }
 
-function resolveFromPrimary(primary: ParsedDbUrl): ResolvedDbConfig {
-  if (!isInternalRailwayHost(primary.hostname)) {
-    return {
-      url: withRequiredSsl(primary.raw),
-      source: primary.label,
-      hostname: primary.hostname
-    };
-  }
+function isPublicRuntime(): boolean {
+  return Boolean(process.env.VERCEL || process.env.VERCEL_ENV || process.env.FORCE_PUBLIC_DATABASE_URL === 'true');
+}
 
+function resolveForPublicRuntime(primary: ParsedDbUrl): ResolvedDbConfig {
   const publicCandidate = getExplicitPublicCandidate();
   if (!publicCandidate) {
     throw new AppError(
-      'DATABASE_URL is internal-only (.railway.internal). Set DATABASE_PUBLIC_URL (or DATABASE_URL_PUBLIC) to a public Railway URL for runtime requests.',
+      'Public runtime requires DATABASE_URL_PUBLIC or DATABASE_PUBLIC_URL. Set it to Railway public URL with ?sslmode=require.',
       503
     );
   }
 
   if (isInternalRailwayHost(publicCandidate.hostname)) {
-    throw new AppError('DATABASE_PUBLIC_URL/DATABASE_URL_PUBLIC cannot use .railway.internal host', 503);
+    throw new AppError('DATABASE_URL_PUBLIC/DATABASE_PUBLIC_URL cannot use .railway.internal host', 503);
   }
 
   return {
     url: withRequiredSsl(publicCandidate.raw),
     source: publicCandidate.label,
-    hostname: publicCandidate.hostname
+    hostname: publicCandidate.hostname,
+    runtime: 'vercel'
+  };
+}
+
+function resolveForServerRuntime(primary: ParsedDbUrl): ResolvedDbConfig {
+  if (isInternalRailwayHost(primary.hostname)) {
+    return {
+      url: primary.raw,
+      source: primary.label,
+      hostname: primary.hostname,
+      runtime: 'server'
+    };
+  }
+
+  return {
+    url: withRequiredSsl(primary.raw),
+    source: primary.label,
+    hostname: primary.hostname,
+    runtime: 'server'
   };
 }
 
@@ -112,11 +128,20 @@ export function resolveDatabaseConfig(): ResolvedDbConfig {
   }
 
   const primary = parseDbUrl(process.env.DATABASE_URL!, 'DATABASE_URL');
-  cached = resolveFromPrimary(primary);
+  cached = isPublicRuntime() ? resolveForPublicRuntime(primary) : resolveForServerRuntime(primary);
 
   return cached;
 }
 
 export function resolveDatabaseUrl(): string {
   return resolveDatabaseConfig().url;
+}
+
+export function getSafeDatabaseRuntimeMeta() {
+  const config = resolveDatabaseConfig();
+  return {
+    source: config.source,
+    hostname: config.hostname,
+    runtime: config.runtime
+  };
 }

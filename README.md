@@ -65,6 +65,18 @@ Contoh transform URL yang kamu kirim:
 - sebelum: `postgresql://postgres:***@shortline.proxy.rlwy.net:11176/railway`
 - sesudah: `postgresql://postgres:***@shortline.proxy.rlwy.net:11176/railway?sslmode=require`
 
+
+### Root cause spesifik dari log kamu (referensi salah di mana)
+- `password authentication failed for user "postgres"` berarti credential pada URL yang dipakai runtime **tidak cocok** dengan PostgreSQL saat ini.
+- Karena error muncul saat akses domain Vercel, referensi yang salah biasanya ada di env Vercel: `DATABASE_URL_PUBLIC` / `DATABASE_PUBLIC_URL` masih pakai password lama.
+- Service Railway app (startup migrate) bisa tetap sukses pakai `DATABASE_URL` internal, sementara Vercel tetap gagal jika public URL tidak sinkron.
+
+Checklist sinkronisasi:
+1. Ambil ulang **public connection string terbaru** dari Railway Postgres service.
+2. Set di Vercel `DATABASE_URL_PUBLIC` (atau `DATABASE_PUBLIC_URL`) persis sama + `?sslmode=require`.
+3. Redeploy Vercel setelah update env.
+4. Cek `/api/health` dan pastikan `dbSource` menunjukkan `DATABASE_URL_PUBLIC`/`DATABASE_PUBLIC_URL` dan `runtime` = `vercel`.
+
 ### C. Setup Deploy di Vercel
 1. Import repo ke Vercel.
 2. Set environment variables di Project Settings.

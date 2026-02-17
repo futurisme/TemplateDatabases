@@ -3,13 +3,13 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { toErrorPayload } from '@/lib/errors';
-import { resolveDatabaseConfig } from '@/lib/env';
+import { getSafeDatabaseRuntimeMeta } from '@/lib/env';
 
 export async function GET() {
   const timestamp = new Date().toISOString();
 
   try {
-    const config = resolveDatabaseConfig();
+    const meta = getSafeDatabaseRuntimeMeta();
     await getDb().$queryRaw`SELECT 1`;
 
     return NextResponse.json(
@@ -17,8 +17,9 @@ export async function GET() {
         ok: true,
         service: 'templatedatabases',
         database: 'ready',
-        dbHost: config.hostname,
-        dbSource: config.source,
+        dbHost: meta.hostname,
+        dbSource: meta.source,
+        runtime: meta.runtime,
         timestamp
       },
       {
