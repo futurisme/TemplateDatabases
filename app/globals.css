@@ -101,3 +101,23 @@ button, .button-link {
   .row { flex-wrap: wrap; }
   .version-badge { left: 8px; bottom: 8px; font-size: 11px; }
 }
+
+
+.register-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: rgba(7, 15, 35, 0.45);
+  backdrop-filter: blur(3px);
+  padding: 16px;
+}
+
+.register-modal {
+  width: min(420px, 100%);
+}
+
+.register-modal h2 {
+  margin-top: 0;
+}

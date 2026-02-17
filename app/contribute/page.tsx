@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { NewTemplateForm } from '@/components/NewTemplateForm';
+import { ContributeGate } from '@/components/ContributeGate';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +15,7 @@ export default function ContributePage() {
         </div>
         <p className="muted">Bagikan template baru untuk komunitas global TemplateDatabase.</p>
       </section>
-      <NewTemplateForm />
+      <ContributeGate />
     </main>
   );
 }
