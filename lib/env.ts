@@ -2,33 +2,35 @@ import { AppError } from '@/lib/errors';
 
 const requiredEnv = ['DATABASE_URL'] as const;
 
-function getHostFromUrl(url: string): string {
+function getHostFromUrl(url: string, label: string): string {
   try {
     return new URL(url).hostname;
   } catch {
-    throw new AppError('DATABASE_URL is invalid', 500);
+    throw new AppError(`${label} is invalid`, 503);
   }
 }
 
 export function resolveDatabaseUrl(): string {
   for (const key of requiredEnv) {
     if (!process.env[key] || process.env[key]?.trim().length === 0) {
-      throw new AppError(`Missing required environment variable: ${key}`, 500);
+      throw new AppError(`Missing required environment variable: ${key}`, 503);
     }
   }
 
   const primary = process.env.DATABASE_URL!.trim();
   const publicCandidate = process.env.DATABASE_URL_PUBLIC?.trim();
   const isVercelRuntime = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
-  const primaryHost = getHostFromUrl(primary);
+  const primaryHost = getHostFromUrl(primary, 'DATABASE_URL');
 
   if (isVercelRuntime && primaryHost.endsWith('.railway.internal')) {
     if (!publicCandidate) {
       throw new AppError(
-        'Invalid DB config: DATABASE_URL points to railway.internal on Vercel. Set DATABASE_URL_PUBLIC with Railway public URL.',
-        500
+        'Invalid DB config for Vercel: DATABASE_URL is railway.internal but DATABASE_URL_PUBLIC is missing.',
+        503
       );
     }
+
+    getHostFromUrl(publicCandidate, 'DATABASE_URL_PUBLIC');
     return publicCandidate;
   }
 

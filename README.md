@@ -21,6 +21,7 @@ Platform open source global untuk menyimpan template universal (code, ide, cerit
 - Jangan gunakan host private Railway (`*.railway.internal`) pada Vercel karena tidak dapat diakses dari jaringan publik Vercel.
 - Gunakan `DATABASE_URL` public connection string dari Railway (TCP/SSL public), bukan internal DNS URL.
 - Setelah env diperbaiki, homepage tetap tidak akan crash total karena data featured dimuat via client + API dengan error state eksplisit.
+- Jika konfigurasi DB invalid/tidak terjangkau, API akan mengembalikan status **503** (bukan 500) dengan pesan operasional yang jelas.
 
 ## Fitur Utama
 - Homepage dengan featured templates.

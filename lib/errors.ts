@@ -1,3 +1,5 @@
+import { Prisma } from '@prisma/client';
+
 export class AppError extends Error {
   status: number;
   expose: boolean;
@@ -10,12 +12,35 @@ export class AppError extends Error {
   }
 }
 
+function isDatabaseUnavailable(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return true;
+  }
+
+  if (error instanceof Prisma.PrismaClientRustPanicError) {
+    return true;
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ['P1000', 'P1001', 'P1002', 'P1017'].includes(error.code);
+  }
+
+  return false;
+}
+
 export function toErrorPayload(error: unknown): { status: number; message: string } {
   if (error instanceof AppError) {
     return { status: error.status, message: error.message };
   }
 
   const isProd = process.env.NODE_ENV === 'production';
+
+  if (isDatabaseUnavailable(error)) {
+    return {
+      status: 503,
+      message: 'Database unavailable. Verify Railway/Vercel connection settings and retry.'
+    };
+  }
 
   if (error instanceof Error) {
     return {

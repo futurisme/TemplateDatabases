@@ -14,6 +14,19 @@ type Item = {
   owner?: { displayName: string };
 };
 
+type ApiPayload = Item[] | { error?: string };
+
+async function readJsonSafe(res: Response): Promise<ApiPayload> {
+  const text = await res.text();
+  if (!text) return [];
+
+  try {
+    return JSON.parse(text) as ApiPayload;
+  } catch {
+    return { error: `Invalid API response (${res.status})` };
+  }
+}
+
 export function FeaturedTemplates() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,11 +44,11 @@ export function FeaturedTemplates() {
         cache: 'no-store'
       });
 
-      const payload = (await res.json()) as Item[] | { error?: string };
+      const payload = await readJsonSafe(res);
 
       if (!res.ok) {
         setItems([]);
-        setError((payload as { error?: string }).error ?? 'Gagal memuat featured templates');
+        setError(Array.isArray(payload) ? `Request failed (${res.status})` : payload.error ?? 'Gagal memuat featured templates');
         setLoading(false);
         return;
       }
