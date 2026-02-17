@@ -3,22 +3,27 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { withDb } from '@/lib/db';
 import { toErrorPayload } from '@/lib/errors';
-import { getSafeDatabaseRuntimeMeta } from '@/lib/env';
+import { getSafeDatabaseRuntimeMeta, resolveDatabaseConfigs } from '@/lib/env';
 
 export async function GET() {
   const timestamp = new Date().toISOString();
 
   try {
     const meta = getSafeDatabaseRuntimeMeta();
-    await withDb((db) => db.$queryRaw`SELECT 1`);
+    const activeSource = await withDb(async (db, source) => {
+      await db.$queryRaw`SELECT 1`;
+      return source;
+    });
+
+    const activeConfig = resolveDatabaseConfigs().find((config) => config.source === activeSource);
 
     return NextResponse.json(
       {
         ok: true,
         service: 'templatedatabases',
         database: 'ready',
-        dbHost: meta.hostname,
-        dbSource: meta.source,
+        dbHost: activeConfig?.hostname ?? meta.hostname,
+        dbSource: activeSource,
         runtime: meta.runtime,
         timestamp
       },

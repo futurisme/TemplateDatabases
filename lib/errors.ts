@@ -12,9 +12,13 @@ export class AppError extends Error {
   }
 }
 
+function compactErrorMessage(input: string): string {
+  return input.replace(/\s+/g, ' ').trim();
+}
+
 export function getPrismaAvailabilityIssue(error: unknown): string | null {
   if (error instanceof Prisma.PrismaClientInitializationError) {
-    return 'Database initialization failed';
+    return `Database initialization failed (${compactErrorMessage(error.message)})`;
   }
 
   if (error instanceof Prisma.PrismaClientRustPanicError) {

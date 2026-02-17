@@ -44,11 +44,11 @@ Atur env berikut:
 #### Sangat disarankan (khusus Vercel jika DATABASE_URL internal)
 - `DATABASE_URL_PUBLIC`
 
-#### Nama public URL yang didukung resolver (prioritas berurutan)
+#### Nama public URL yang didukung resolver (dicoba berurutan + fallback)
 - `DATABASE_URL_PUBLIC`
 - `DATABASE_PUBLIC_URL`
 
-Resolver runtime sekarang **hanya** memakai env public URL eksplisit di atas saat `DATABASE_URL` mengarah ke host internal (`*.railway.internal`), supaya tidak salah memilih URL otomatis lain yang kredensialnya berbeda.
+Resolver runtime sekarang memakai **semua** env public URL eksplisit di atas sebagai kandidat fallback saat `DATABASE_URL` mengarah ke host internal (`*.railway.internal`). Ini mencegah single-point-of-failure saat salah satu endpoint public mati/rotate.
 
 Contoh konfigurasi yang benar untuk kasus kamu:
 - `DATABASE_URL=postgresql://postgres:***@postgres.railway.internal:5432/railway` (internal Railway)
@@ -57,6 +57,7 @@ Contoh konfigurasi yang benar untuk kasus kamu:
 Kesalahan paling umum:
 - `DATABASE_URL` di Vercel diisi URL internal Railway.
 - URL publik tidak menyertakan `sslmode=require` pada endpoint Railway proxy.
+- Hanya mengisi satu URL public padahal endpoint itu sedang tidak reachable dari runtime (misalnya isu routing/IPv6).
 - Password user database pada URL publik berbeda dari URL internal (`P1000 authentication failed`).
 - `DATABASE_URL` internal tetapi `DATABASE_PUBLIC_URL` / `DATABASE_URL_PUBLIC` belum diisi.
 - `DATABASE_PUBLIC_URL` / `DATABASE_URL_PUBLIC` masih memakai host internal (`*.railway.internal`).

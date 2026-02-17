@@ -63,11 +63,7 @@ async function evictClient(url: string): Promise<void> {
     return;
   }
 
-  try {
-    await client.$disconnect();
-  } catch (disconnectError) {
-    console.error('Failed disconnecting unhealthy Prisma client:', disconnectError);
-  }
+  await client.$disconnect();
 }
 
 function shouldRetryWithFallback(error: unknown): boolean {
@@ -112,7 +108,9 @@ export async function withDb<T>(operation: (db: PrismaClient, source: string) =>
       return result;
     } catch (error) {
       const issue = getPrismaAvailabilityIssue(error);
-      const message = issue ? `${config.source}: ${issue}` : `${config.source}: unknown database error`;
+      const message = issue
+        ? `${config.source}: ${issue}`
+        : `${config.source}: ${error instanceof Error ? error.message : 'unknown database error'}`;
       failures.push(message);
 
       if (!shouldRetryWithFallback(error)) {

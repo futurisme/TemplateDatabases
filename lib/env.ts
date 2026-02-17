@@ -6,6 +6,7 @@ type ParsedDbUrl = {
   label: string;
   raw: string;
   hostname: string;
+  port: string;
   username: string;
   database: string;
 };
@@ -34,7 +35,8 @@ function parseDbUrl(rawValue: string, label: string): ParsedDbUrl {
     throw new AppError(`${label} must use postgres/postgresql protocol`, 503);
   }
 
-  if (!parsed.username || !parsed.password || parsed.pathname.replace(/^\//, '').length === 0) {
+  const database = parsed.pathname.replace(/^\//, '');
+  if (!parsed.username || !parsed.password || database.length === 0) {
     throw new AppError(`${label} must include username, password, and database name`, 503);
   }
 
@@ -42,8 +44,9 @@ function parseDbUrl(rawValue: string, label: string): ParsedDbUrl {
     label,
     raw,
     hostname: parsed.hostname.toLowerCase(),
+    port: parsed.port,
     username: parsed.username,
-    database: parsed.pathname.replace(/^\//, '')
+    database
   };
 }
 
@@ -51,10 +54,11 @@ function isInternalRailwayHost(hostname: string): boolean {
   return hostname.endsWith('.railway.internal');
 }
 
-function withRequiredSsl(url: string): string {
+function withConnectionSafeguards(url: string): string {
   const parsed = new URL(url);
   const host = parsed.hostname.toLowerCase();
-  const shouldRequireSsl = host.endsWith('.proxy.rlwy.net') || host.endsWith('.up.railway.app');
+  const isRailwayProxyHost = host.endsWith('.proxy.rlwy.net');
+  const shouldRequireSsl = isRailwayProxyHost || host.endsWith('.up.railway.app');
 
   if (shouldRequireSsl && !parsed.searchParams.has('sslmode')) {
     parsed.searchParams.set('sslmode', 'require');
@@ -64,22 +68,37 @@ function withRequiredSsl(url: string): string {
     parsed.searchParams.set('connect_timeout', '5');
   }
 
+  if (!parsed.searchParams.has('pool_timeout')) {
+    parsed.searchParams.set('pool_timeout', '10');
+  }
+
+  if (isRailwayProxyHost && !parsed.searchParams.has('pgbouncer')) {
+    parsed.searchParams.set('pgbouncer', 'true');
+  }
+
+  if (isRailwayProxyHost && !parsed.searchParams.has('connection_limit')) {
+    parsed.searchParams.set('connection_limit', '1');
+  }
+
   return parsed.toString();
 }
 
-function getExplicitPublicCandidate(): ParsedDbUrl | null {
+function getExplicitPublicCandidates(): ParsedDbUrl[] {
   const explicit = [
     ['DATABASE_URL_PUBLIC', process.env.DATABASE_URL_PUBLIC],
     ['DATABASE_PUBLIC_URL', process.env.DATABASE_PUBLIC_URL]
   ] as const;
 
+  const parsed: ParsedDbUrl[] = [];
   for (const [label, value] of explicit) {
-    if (value && value.trim().length > 0) {
-      return parseDbUrl(value, label);
+    if (!value || value.trim().length === 0) {
+      continue;
     }
+
+    parsed.push(parseDbUrl(value, label));
   }
 
-  return null;
+  return parsed;
 }
 
 function isPublicRuntime(): boolean {
@@ -88,7 +107,7 @@ function isPublicRuntime(): boolean {
 
 function toConfig(parsed: ParsedDbUrl, runtime: 'vercel' | 'server'): ResolvedDbConfig {
   return {
-    url: withRequiredSsl(parsed.raw),
+    url: withConnectionSafeguards(parsed.raw),
     source: parsed.label,
     hostname: parsed.hostname,
     runtime
@@ -100,9 +119,11 @@ function dedupeConfigs(configs: ResolvedDbConfig[]): ResolvedDbConfig[] {
   const next: ResolvedDbConfig[] = [];
 
   for (const config of configs) {
-    const key = `${config.source}:${config.url}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    if (seen.has(config.url)) {
+      continue;
+    }
+
+    seen.add(config.url);
     next.push(config);
   }
 
@@ -110,30 +131,32 @@ function dedupeConfigs(configs: ResolvedDbConfig[]): ResolvedDbConfig[] {
 }
 
 function resolveForPublicRuntime(primary: ParsedDbUrl): ResolvedDbConfig[] {
-  const publicCandidate = getExplicitPublicCandidate();
+  const publicCandidates = getExplicitPublicCandidates();
 
-  if (publicCandidate && isInternalRailwayHost(publicCandidate.hostname)) {
-    throw new AppError('DATABASE_URL_PUBLIC/DATABASE_PUBLIC_URL cannot use .railway.internal host', 503);
+  for (const candidate of publicCandidates) {
+    if (isInternalRailwayHost(candidate.hostname)) {
+      throw new AppError(`${candidate.label} cannot use .railway.internal host`, 503);
+    }
   }
 
   const candidates: ResolvedDbConfig[] = [];
-
-  if (publicCandidate) {
-    candidates.push(toConfig(publicCandidate, 'vercel'));
+  for (const candidate of publicCandidates) {
+    candidates.push(toConfig(candidate, 'vercel'));
   }
 
   if (!isInternalRailwayHost(primary.hostname)) {
     candidates.push(toConfig(primary, 'vercel'));
   }
 
-  if (candidates.length === 0) {
+  const deduped = dedupeConfigs(candidates);
+  if (deduped.length === 0) {
     throw new AppError(
       'Public runtime requires a public PostgreSQL URL. Set DATABASE_URL_PUBLIC or DATABASE_PUBLIC_URL to Railway public URL with ?sslmode=require.',
       503
     );
   }
 
-  return dedupeConfigs(candidates);
+  return deduped;
 }
 
 function resolveForServerRuntime(primary: ParsedDbUrl): ResolvedDbConfig[] {
