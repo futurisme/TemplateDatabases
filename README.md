@@ -69,12 +69,14 @@ npm run db:seed
 ## Startup Otomatis Produksi
 - Saat runtime start, aplikasi otomatis menjalankan:
   1) `prisma generate`
-  2) `prisma migrate deploy`
-  3) `next start -p $PORT`
+  2) `prisma migrate deploy` (jika folder migrasi tersedia)
+  3) fallback `prisma db push --skip-generate` jika migrasi belum ada
+  4) `next start -p $PORT`
 - Opsional seed awal: set `RUN_DB_SEED=true` di environment.
 - Ini mencegah error schema/table belum termigrasi saat route seperti `/api/templates?featured=1` dipanggil.
 
 ## Struktur
+- `prisma/migrations/` migration history untuk produksi.
 - `app/` Next.js pages + API routes.
 - `components/` UI modular ringan.
 - `lib/` utilitas, validasi schema, error handling, DB client.
