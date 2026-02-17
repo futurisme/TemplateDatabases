@@ -1,8 +1,8 @@
 [phases.install]
-cmds = ["npm ci --omit=dev"]
+cmds = ["npm ci"]
 
 [phases.build]
 cmds = ["npm run build"]
 
 [start]
-cmd = "next start -p ${PORT:-8080}"
+cmd = "node scripts/start-production.mjs"
