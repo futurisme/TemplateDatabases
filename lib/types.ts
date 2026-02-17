@@ -6,7 +6,7 @@ export const createTemplateSchema = z.object({
   content: z.string().min(10),
   type: z.enum(['CODE', 'IDEA', 'STORY', 'OTHER']),
   tags: z.array(z.string().min(1).max(30)).max(12),
-  ownerRef: z.string().min(2).max(64),
+  ownerRef: z.string().min(1),
   featured: z.boolean().optional()
 });
 

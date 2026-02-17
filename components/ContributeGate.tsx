@@ -8,41 +8,87 @@ type LocalProfile = {
   password: string;
 };
 
+type GateState =
+  | { status: 'loading' }
+  | { status: 'guest' }
+  | { status: 'registered'; profile: LocalProfile }
+  | { status: 'error'; message: string };
+
 const STORAGE_KEY = 'templatedb_profile_v1';
 
-function readProfile(): LocalProfile | null {
-  if (typeof window === 'undefined') return null;
+function isValidProfile(value: unknown): value is LocalProfile {
+  if (!value || typeof value !== 'object') return false;
+
+  const candidate = value as Partial<LocalProfile>;
+  return typeof candidate.name === 'string' && typeof candidate.password === 'string';
+}
+
+function readProfileFromStorage(): LocalProfile | null {
+  if (typeof window === 'undefined') {
+    throw new Error('window is not available in this runtime.');
+  }
 
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
 
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(raw) as Partial<LocalProfile>;
-    if (typeof parsed.name === 'string' && typeof parsed.password === 'string') {
-      return { name: parsed.name, password: parsed.password };
-    }
-  } catch {
-    return null;
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`Invalid profile JSON in localStorage (${String(error)}).`);
   }
 
-  return null;
+  if (!isValidProfile(parsed)) {
+    throw new Error('Invalid profile shape in localStorage.');
+  }
+
+  return {
+    name: parsed.name.trim(),
+    password: parsed.password
+  };
 }
 
-function saveProfile(profile: LocalProfile): void {
+function persistProfile(profile: LocalProfile): void {
+  if (typeof window === 'undefined') {
+    throw new Error('window is not available in this runtime.');
+  }
+
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
 }
 
 export function ContributeGate() {
-  const [profile, setProfile] = useState<LocalProfile | null>(null);
+  const [gateState, setGateState] = useState<GateState>({ status: 'loading' });
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setProfile(readProfile());
+    try {
+      const existingProfile = readProfileFromStorage();
+      if (existingProfile && existingProfile.name.length > 0) {
+        setGateState({ status: 'registered', profile: existingProfile });
+        return;
+      }
+
+      setGateState({ status: 'guest' });
+    } catch (error) {
+      console.error('Failed to read profile from localStorage:', error);
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
+
+      setGateState({ status: 'error', message: 'Profil lokal rusak. Silakan register ulang.' });
+    }
   }, []);
 
-  const isRegistered = useMemo(() => profile !== null, [profile]);
+  const registeredProfile = useMemo(() => {
+    if (gateState.status === 'registered') {
+      return gateState.profile;
+    }
+
+    return null;
+  }, [gateState]);
 
   function register(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -53,23 +99,31 @@ export function ContributeGate() {
       return;
     }
 
-    const nextProfile = { name: name.trim(), password };
+    const nextProfile: LocalProfile = { name: name.trim(), password };
     if (!nextProfile.name) {
       setError('Nama wajib diisi.');
       return;
     }
 
-    saveProfile(nextProfile);
-    setProfile(nextProfile);
+    try {
+      persistProfile(nextProfile);
+      setGateState({ status: 'registered', profile: nextProfile });
+    } catch (persistError) {
+      console.error('Failed to persist profile into localStorage:', persistError);
+      setError('Gagal menyimpan profil lokal. Coba lagi.');
+    }
   }
+
+  const shouldShowRegisterModal = gateState.status === 'guest' || gateState.status === 'error';
 
   return (
     <>
-      {!isRegistered && (
+      {shouldShowRegisterModal && (
         <div className="register-overlay" role="dialog" aria-modal="true" aria-labelledby="register-title">
           <section className="register-modal card">
             <h2 id="register-title">Register untuk Contribute</h2>
             <p className="muted">Sebelum kontribusi template, buat profil sederhana dulu.</p>
+            {gateState.status === 'error' && <p className="muted">{gateState.message}</p>}
             <form onSubmit={register}>
               <input
                 type="text"
@@ -93,7 +147,7 @@ export function ContributeGate() {
           </section>
         </div>
       )}
-      {isRegistered && <NewTemplateForm ownerRef={profile.name} />}
+      {registeredProfile && <NewTemplateForm ownerRef={registeredProfile.name} />}
     </>
   );
 }
