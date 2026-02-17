@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { withDb } from '@/lib/db';
 import { AppError, getPrismaAvailabilityIssue, toErrorPayload } from '@/lib/errors';
 import { featuredFallback } from '@/lib/featured-fallback';
 
@@ -14,10 +14,12 @@ export async function GET(
       throw new AppError('Invalid template slug', 400);
     }
 
-    const template = await getDb().template.findUnique({
+    const template = await withDb((db) =>
+      db.template.findUnique({
       where: { slug: params.slug },
       include: { owner: { select: { displayName: true, username: true, id: true } } }
-    });
+    })
+    );
 
     if (!template) {
       throw new AppError('Template not found', 404);

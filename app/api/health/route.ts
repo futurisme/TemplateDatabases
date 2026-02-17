@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { withDb } from '@/lib/db';
 import { toErrorPayload } from '@/lib/errors';
 import { getSafeDatabaseRuntimeMeta } from '@/lib/env';
 
@@ -10,7 +10,7 @@ export async function GET() {
 
   try {
     const meta = getSafeDatabaseRuntimeMeta();
-    await getDb().$queryRaw`SELECT 1`;
+    await withDb((db) => db.$queryRaw`SELECT 1`);
 
     return NextResponse.json(
       {

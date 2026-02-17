@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { withDb } from '@/lib/db';
 import { toErrorPayload } from '@/lib/errors';
 
 export async function GET(req: NextRequest) {
@@ -12,15 +12,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json([]);
     }
 
-    const rows = await getDb().$queryRaw<Array<{
-      id: string;
-      slug: string;
-      title: string;
-      summary: string;
-      type: string;
-      tags: string[];
-      score: number;
-    }>>`
+    const rows = await withDb((db) =>
+      db.$queryRaw`
       SELECT
         id,
         slug,
@@ -40,7 +33,8 @@ export async function GET(req: NextRequest) {
         OR summary ILIKE ${`%${q}%`}
       ORDER BY score DESC, "createdAt" DESC
       LIMIT 20;
-    `;
+    `
+    );
 
     return NextResponse.json(rows, {
       headers: {

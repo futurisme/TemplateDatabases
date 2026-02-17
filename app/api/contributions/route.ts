@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { withDb } from '@/lib/db';
 import { contributionSchema } from '@/lib/types';
 import { AppError, toErrorPayload } from '@/lib/errors';
 
@@ -16,10 +16,12 @@ export async function POST(req: NextRequest) {
 
     const { templateId, userId, message } = parsed.data;
 
-    const [template, user] = await Promise.all([
-      getDb().template.findUnique({ where: { id: templateId } }),
-      getDb().user.findUnique({ where: { id: userId } })
-    ]);
+    const [template, user] = await withDb((db) =>
+      Promise.all([
+        db.template.findUnique({ where: { id: templateId } }),
+        db.user.findUnique({ where: { id: userId } })
+      ])
+    );
 
     if (!template) {
       throw new AppError('Template not found', 404);
@@ -31,9 +33,11 @@ export async function POST(req: NextRequest) {
       throw new AppError('Owner cannot contribute to own template', 400);
     }
 
-    const contribution = await getDb().contribution.create({
-      data: { templateId, userId, message }
-    });
+    const contribution = await withDb((db) =>
+      db.contribution.create({
+        data: { templateId, userId, message }
+      })
+    );
 
     return NextResponse.json(contribution, { status: 201 });
   } catch (error) {

@@ -16,19 +16,30 @@ type SearchResult = {
 export function SearchBox() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const ctrl = new AbortController();
     const timer = setTimeout(async () => {
       if (query.trim().length < 2) {
         setResults([]);
+        setError('');
         return;
       }
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal: ctrl.signal });
-      if (res.ok) {
-        const data = (await res.json()) as SearchResult[];
-        setResults(data);
+
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, { signal: ctrl.signal, cache: 'no-store' });
+      const payload = (await res.json().catch(() => ({ error: `Invalid API response (${res.status})` }))) as
+        | SearchResult[]
+        | { error?: string };
+
+      if (!res.ok) {
+        setResults([]);
+        setError(Array.isArray(payload) ? `Request failed (${res.status})` : payload.error ?? 'Search request failed');
+        return;
       }
+
+      setError('');
+      setResults(Array.isArray(payload) ? payload : []);
     }, 160);
 
     return () => {
@@ -46,6 +57,7 @@ export function SearchBox() {
         placeholder="Cari template: code, ide, cerita, dll..."
       />
       <div className="space" />
+      {error && <p className="muted">{error}</p>}
       {results.length > 0 && (
         <div className="grid">
           {results.map((item) => (

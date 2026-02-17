@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
-import { getDb } from '@/lib/db';
+import { withDb } from '@/lib/db';
 import { compactText, slugify } from '@/lib/utils';
 import { AppError, getPrismaAvailabilityIssue, toErrorPayload } from '@/lib/errors';
 import { featuredFallback } from '@/lib/featured-fallback';
@@ -57,25 +57,26 @@ function normalizeCreateTemplatePayload(body: unknown): CreateTemplateInput {
 }
 
 async function resolveOwnerId(ownerRef: string): Promise<string> {
-  const db = getDb();
-  const trimmed = ownerRef.trim();
+  return withDb(async (db) => {
+    const trimmed = ownerRef.trim();
 
-  const byId = await db.user.findUnique({ where: { id: trimmed }, select: { id: true } });
-  if (byId) return byId.id;
+    const byId = await db.user.findUnique({ where: { id: trimmed }, select: { id: true } });
+    if (byId) return byId.id;
 
-  const byUsername = await db.user.findUnique({ where: { username: trimmed }, select: { id: true } });
-  if (byUsername) return byUsername.id;
+    const byUsername = await db.user.findUnique({ where: { username: trimmed }, select: { id: true } });
+    if (byUsername) return byUsername.id;
 
-  const normalizedUsername = slugify(trimmed).replace(/-/g, '').slice(0, 24) || `user${Date.now()}`;
-  const displayName = trimmed.slice(0, 60);
+    const normalizedUsername = slugify(trimmed).replace(/-/g, '').slice(0, 24) || `user${Date.now()}`;
+    const displayName = trimmed.slice(0, 60);
 
-  const created = await db.user.upsert({
-    where: { username: normalizedUsername },
-    update: { displayName },
-    create: { username: normalizedUsername, displayName }
+    const created = await db.user.upsert({
+      where: { username: normalizedUsername },
+      update: { displayName },
+      create: { username: normalizedUsername, displayName }
+    });
+
+    return created.id;
   });
-
-  return created.id;
 }
 
 async function createWithUniqueSlug(payload: {
@@ -91,13 +92,15 @@ async function createWithUniqueSlug(payload: {
   for (let i = 0; i < 5; i += 1) {
     const slug = i === 0 ? base : `${base}-${crypto.randomUUID().slice(0, 6)}`;
     try {
-      return await getDb().template.create({
-        data: {
-          ...payload,
-          slug,
-          searchDocument: compactText(payload.title, payload.summary, payload.content, payload.tags.join(' '))
-        }
-      });
+      return await withDb((db) =>
+        db.template.create({
+          data: {
+            ...payload,
+            slug,
+            searchDocument: compactText(payload.title, payload.summary, payload.content, payload.tags.join(' '))
+          }
+        })
+      );
     } catch (error) {
       const isConflict =
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -117,18 +120,18 @@ export async function GET(req: NextRequest) {
   const featuredOnly = req.nextUrl.searchParams.get('featured') === '1';
 
   try {
-    const data = await getDb().template.findMany({
-      where: featuredOnly ? { featured: true } : undefined,
-      orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
-      take: featuredOnly ? 8 : 50,
-      include: { owner: { select: { id: true, username: true, displayName: true } } }
-    });
+    const data = await withDb((db) =>
+      db.template.findMany({
+        where: featuredOnly ? { featured: true } : undefined,
+        orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
+        take: featuredOnly ? 8 : 50,
+        include: { owner: { select: { id: true, username: true, displayName: true } } }
+      })
+    );
 
     return NextResponse.json(data, {
       headers: {
-        'Cache-Control': featuredOnly
-          ? 'public, s-maxage=120, stale-while-revalidate=300'
-          : 'no-store'
+        'Cache-Control': featuredOnly ? 'public, s-maxage=120, stale-while-revalidate=300' : 'no-store'
       }
     });
   } catch (error) {
@@ -162,7 +165,6 @@ export async function POST(req: NextRequest) {
 
   try {
     const parsed = normalizeCreateTemplatePayload(body);
-
     const ownerId = await resolveOwnerId(parsed.ownerRef);
 
     const created = await createWithUniqueSlug({
