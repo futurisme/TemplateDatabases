@@ -44,11 +44,11 @@ npm run dev
 
 ### 1) Railway (Database)
 1. Buat project PostgreSQL di Railway.
-2. Copy `DATABASE_URL`.
+2. Copy private `DATABASE_URL` (boleh `*.railway.internal` untuk service dalam private network Railway).
 
 ### 2) Vercel
 1. Import repo ini ke Vercel.
-2. Set env var `DATABASE_URL`.
+2. Set env var `DATABASE_URL` dan jika nilainya `*.railway.internal`, tambahkan `DATABASE_URL_PUBLIC` (public Railway URL + SSL) khusus untuk runtime Vercel.
 3. Build command: `npm run build`
 4. Start command: `npm run start`
 

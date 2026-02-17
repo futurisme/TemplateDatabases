@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { assertServerEnv } from '@/lib/env';
+import { resolveDatabaseUrl } from '@/lib/env';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -7,11 +7,12 @@ declare global {
 }
 
 export function getDb(): PrismaClient {
-  assertServerEnv();
+  const dbUrl = resolveDatabaseUrl();
 
   const client =
     global.prisma ??
     new PrismaClient({
+      datasources: { db: { url: dbUrl } },
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error']
     });
 
