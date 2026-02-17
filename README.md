@@ -22,6 +22,7 @@ Platform open source global untuk menyimpan template universal (code, ide, cerit
 - Gunakan `DATABASE_URL` public connection string dari Railway (TCP/SSL public), bukan internal DNS URL.
 - Setelah env diperbaiki, homepage tetap tidak akan crash total karena data featured dimuat via client + API dengan error state eksplisit.
 - Jika konfigurasi DB invalid/tidak terjangkau, API akan mengembalikan status **503** (bukan 500) dengan pesan operasional yang jelas.
+- Endpoint featured (`/api/templates?featured=1`) memiliki fallback terkontrol agar homepage tetap tersedia; respons fallback menambahkan header `X-TemplateData-Source: fallback`.
 
 ## Fitur Utama
 - Homepage dengan featured templates.
@@ -49,7 +50,7 @@ npm run dev
 
 ### 2) Vercel
 1. Import repo ini ke Vercel.
-2. Set env var `DATABASE_URL` dan jika nilainya `*.railway.internal`, tambahkan `DATABASE_URL_PUBLIC` (public Railway URL + SSL) khusus untuk runtime Vercel.
+2. Set env var `DATABASE_URL` dan jika nilainya `*.railway.internal`, tambahkan salah satu public URL env berikut: `DATABASE_URL_PUBLIC` / `DATABASE_PUBLIC_URL` / `POSTGRES_PRISMA_URL` / `POSTGRES_URL`.
 3. Build command: `npm run build`
 4. Start command: `npm run start`
 
@@ -73,6 +74,7 @@ npm run db:seed
   3) fallback `prisma db push --skip-generate` jika migrasi belum ada
   4) `next start -p $PORT`
 - Opsional seed awal: set `RUN_DB_SEED=true` di environment.
+- Prisma/tsx binary disediakan sebagai dependencies produksi agar bootstrap tidak gagal saat install mode production.
 - Ini mencegah error schema/table belum termigrasi saat route seperti `/api/templates?featured=1` dipanggil.
 
 ## Struktur

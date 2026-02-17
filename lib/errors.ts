@@ -12,7 +12,7 @@ export class AppError extends Error {
   }
 }
 
-function getPrismaAvailabilityIssue(error: unknown): string | null {
+export function getPrismaAvailabilityIssue(error: unknown): string | null {
   if (error instanceof Prisma.PrismaClientInitializationError) {
     return 'Database initialization failed';
   }

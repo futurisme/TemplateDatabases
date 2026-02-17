@@ -5,7 +5,8 @@ import { Prisma } from '@prisma/client';
 import { getDb } from '@/lib/db';
 import { createTemplateSchema } from '@/lib/types';
 import { compactText, slugify } from '@/lib/utils';
-import { AppError, toErrorPayload } from '@/lib/errors';
+import { AppError, getPrismaAvailabilityIssue, toErrorPayload } from '@/lib/errors';
+import { featuredFallback } from '@/lib/featured-fallback';
 
 export const revalidate = 0;
 
@@ -45,8 +46,9 @@ async function createWithUniqueSlug(payload: {
 }
 
 export async function GET(req: NextRequest) {
+  const featuredOnly = req.nextUrl.searchParams.get('featured') === '1';
+
   try {
-    const featuredOnly = req.nextUrl.searchParams.get('featured') === '1';
     const data = await getDb().template.findMany({
       where: featuredOnly ? { featured: true } : undefined,
       orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
@@ -62,8 +64,20 @@ export async function GET(req: NextRequest) {
       }
     });
   } catch (error) {
-    const payload = toErrorPayload(error);
     console.error('GET /api/templates failed:', error);
+
+    const issue = getPrismaAvailabilityIssue(error);
+    if (featuredOnly && issue) {
+      return NextResponse.json(featuredFallback, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+          'X-TemplateData-Source': 'fallback'
+        }
+      });
+    }
+
+    const payload = toErrorPayload(error);
     return NextResponse.json({ error: payload.message }, { status: payload.status });
   }
 }
