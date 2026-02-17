@@ -2,36 +2,84 @@
 
 Platform open source global untuk menyimpan template universal (code, ide, cerita, dll) dengan performa ringan, smart search, featured templates, tombol copy, dan alur contribute.
 
-## Stack Produksi (100% free-tier)
-- **Frontend + API**: Next.js 14.2.35 di **Vercel**
-- **Database**: PostgreSQL di **Railway Cloud Database**
-- **ORM**: Prisma
-- **Search**: PostgreSQL full-text + ranking
+## Stack Produksi
+- Frontend + API: Next.js 14 (Vercel / Railway Runtime)
+- Database: PostgreSQL (Railway)
+- ORM: Prisma
+- Validation: Zod
 
-## Audit Arsitektur & Perbaikan Root Cause
-- Dependency vulnerability diperbaiki di level akar dengan upgrade `next` dan `eslint-config-next` ke `14.2.35`.
-- Fallback data in-memory yang menutupi error DB dihapus agar tidak ada silent failure.
-- Error handling backend dibuat eksplisit dengan typed errors dan HTTP status yang konsisten.
-- Potensi race condition slug creation diselesaikan dengan retry strategy terhadap unique constraint conflict.
-- Detail template sekarang menggunakan endpoint slug-spesifik (`/api/templates/[slug]`) agar efisien dan konsisten data integrity.
-- Validasi referential integrity ditambahkan pada pembuatan template (owner harus ada) dan contribution (template + user harus ada).
+## Deep-Dive Root Cause (Kenapa Bisa 503)
+Kasus `/api/templates?featured=1` menghasilkan 503 umumnya karena kombinasi ini:
+1. **Vercel membaca `DATABASE_URL` internal Railway** (`*.railway.internal`) yang tidak bisa diakses dari jaringan publik Vercel.
+2. **Schema DB belum sinkron** saat route dipanggil (startup race sebelum migrasi diterapkan).
+3. **Runtime install mode production** menghilangkan binary yang dibutuhkan bootstrap kalau dependency salah tempat.
+4. **Fallback featured list ada, tapi detail slug fallback ikut query DB** sehingga klik card fallback bisa gagal jika tidak ada fallback detail handler.
 
+Perbaikan final pada codebase ini:
+- Resolver DB otomatis memilih public DB URL env saat runtime Vercel + internal host terdeteksi.
+- Startup bootstrap deterministic (`prisma generate` -> schema apply -> optional seed -> `next start`).
+- Migration history disimpan di repo (`prisma/migrations`).
+- Featured endpoint punya controlled fallback dan detail fallback slug juga tersedia.
+- Error handling strict + eksplisit (tanpa silent catch suppression).
 
-## Penyebab 500 di Vercel (Root Cause)
-- Jangan gunakan host private Railway (`*.railway.internal`) pada Vercel karena tidak dapat diakses dari jaringan publik Vercel.
-- Gunakan `DATABASE_URL` public connection string dari Railway (TCP/SSL public), bukan internal DNS URL.
-- Setelah env diperbaiki, homepage tetap tidak akan crash total karena data featured dimuat via client + API dengan error state eksplisit.
-- Jika konfigurasi DB invalid/tidak terjangkau, API akan mengembalikan status **503** (bukan 500) dengan pesan operasional yang jelas.
-- Endpoint featured (`/api/templates?featured=1`) memiliki fallback terkontrol agar homepage tetap tersedia; respons fallback menambahkan header `X-TemplateData-Source: fallback`.
+---
 
-## Fitur Utama
-- Homepage dengan featured templates.
-- Smart search cepat (`/api/search`).
-- Template detail dengan:
-  - Tombol **Copy** konten template.
-  - Tombol **Contribute** hanya jika user bukan owner.
-- Endpoint backend untuk create template dan contribution.
-- Optimasi performa: server rendering, cache headers, compressed responses (`next.config` compress).
+## Step-by-Step Setup (SUPER DETAIL)
+
+### A. Setup Railway PostgreSQL
+1. Buat project PostgreSQL di Railway.
+2. Ambil 2 jenis URL:
+   - Internal URL (biasanya `*.railway.internal`) untuk service dalam network Railway.
+   - Public URL untuk akses dari Vercel/public runtime.
+3. Pastikan public URL pakai SSL (`?sslmode=require` jika diperlukan provider).
+
+### B. Setup Environment Variables
+Atur env berikut:
+
+#### Wajib
+- `DATABASE_URL`
+
+#### Sangat disarankan (khusus Vercel jika DATABASE_URL internal)
+- `DATABASE_URL_PUBLIC`
+
+#### Alternatif nama yang juga didukung resolver
+- `DATABASE_PUBLIC_URL`
+- `POSTGRES_PRISMA_URL`
+- `POSTGRES_URL`
+
+Resolver runtime memilih kandidat public di atas saat:
+- runtime = Vercel, dan
+- host `DATABASE_URL` berakhiran `.railway.internal`.
+
+### C. Setup Deploy di Vercel
+1. Import repo ke Vercel.
+2. Set environment variables di Project Settings.
+3. Build command: `npm run build`
+4. Start command: `npm run start`
+5. Redeploy setelah semua env terpasang.
+
+### D. Setup Deploy di Railway Runtime (Opsional untuk App)
+Repo sudah menyiapkan:
+- `nixpacks.toml`
+- `railway.toml`
+- healthcheck `/api/health`
+
+Runtime start akan otomatis:
+1. `prisma generate`
+2. `prisma migrate deploy` (jika migrasi tersedia)
+3. fallback `prisma db push --skip-generate` bila folder migrasi tidak ada
+4. optional seed jika `RUN_DB_SEED=true`
+5. `next start -p $PORT`
+
+### E. Verifikasi Produksi
+Cek endpoint ini setelah deploy:
+1. `GET /api/health` -> harus `200`.
+2. `GET /api/templates?featured=1` -> harus `200`.
+   - jika DB normal: data real DB.
+   - jika DB unavailable: fallback response + header `X-TemplateData-Source: fallback`.
+3. Klik card featured fallback (slug fallback) -> detail tetap bisa dibuka.
+
+---
 
 ## Menjalankan Lokal
 ```bash
@@ -42,48 +90,30 @@ npm run db:seed
 npm run dev
 ```
 
-## Deployment
+## API Penting
+- `GET /api/health`
+- `GET /api/templates?featured=1`
+- `POST /api/templates`
+- `GET /api/templates/[slug]`
+- `POST /api/contributions`
+- `GET /api/search?q=...`
 
-### 1) Railway (Database)
-1. Buat project PostgreSQL di Railway.
-2. Copy private `DATABASE_URL` (boleh `*.railway.internal` untuk service dalam private network Railway).
-
-### 2) Vercel
-1. Import repo ini ke Vercel.
-2. Set env var `DATABASE_URL` dan jika nilainya `*.railway.internal`, tambahkan salah satu public URL env berikut: `DATABASE_URL_PUBLIC` / `DATABASE_PUBLIC_URL` / `POSTGRES_PRISMA_URL` / `POSTGRES_URL`.
-3. Build command: `npm run build`
-4. Start command: `npm run start`
-
-### 2b) Railway Runtime (opsional service app)
-- Repo ini menyediakan `nixpacks.toml` + `railway.toml` agar Railway menjalankan app tanpa wrapper `npm start` (menghindari noise SIGTERM dari npm).
-- Health check endpoint: `/api/health`.
-- Start command: `next start -p ${PORT:-8080}`.
-
-### 3) Migrasi
-Jalankan di Vercel post-deploy atau CI:
-```bash
-npm run db:migrate
-npm run db:seed
-```
-
-
-## Startup Otomatis Produksi
-- Saat runtime start, aplikasi otomatis menjalankan:
-  1) `prisma generate`
-  2) `prisma migrate deploy` (jika folder migrasi tersedia)
-  3) fallback `prisma db push --skip-generate` jika migrasi belum ada
-  4) `next start -p $PORT`
-- Opsional seed awal: set `RUN_DB_SEED=true` di environment.
-- Prisma/tsx binary disediakan sebagai dependencies produksi agar bootstrap tidak gagal saat install mode production.
-- Ini mencegah error schema/table belum termigrasi saat route seperti `/api/templates?featured=1` dipanggil.
+## Catatan Integritas Data
+- Pembuatan template menangani race slug dengan retry di unique conflict.
+- `ownerRef` pada create template bisa berupa:
+  - user id,
+  - username,
+  - atau nama baru (akan dibuatkan user secara aman via upsert username ter-normalisasi).
+- Kontribusi ditolak jika user adalah owner template.
 
 ## Struktur
-- `prisma/migrations/` migration history untuk produksi.
-- `app/` Next.js pages + API routes.
-- `components/` UI modular ringan.
-- `lib/` utilitas, validasi schema, error handling, DB client.
-- `prisma/` schema database dan seed data.
+- `app/` Next.js app routes + API routes.
+- `components/` Komponen UI.
+- `lib/` DB, env resolution, errors, validation, helpers.
+- `prisma/` schema, migrations, seed.
+- `scripts/` startup bootstrap produksi.
 
-## Catatan Open Source
-- Kode rapi, strict TypeScript, mudah di-scale.
-- Tanpa placeholder/TODO.
+## Open Source Notes
+- Kode strict TypeScript.
+- Error handling operasional eksplisit.
+- Deployment flow deterministik.

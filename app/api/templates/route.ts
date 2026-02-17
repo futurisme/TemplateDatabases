@@ -10,6 +10,28 @@ import { featuredFallback } from '@/lib/featured-fallback';
 
 export const revalidate = 0;
 
+async function resolveOwnerId(ownerRef: string): Promise<string> {
+  const db = getDb();
+  const trimmed = ownerRef.trim();
+
+  const byId = await db.user.findUnique({ where: { id: trimmed }, select: { id: true } });
+  if (byId) return byId.id;
+
+  const byUsername = await db.user.findUnique({ where: { username: trimmed }, select: { id: true } });
+  if (byUsername) return byUsername.id;
+
+  const normalizedUsername = slugify(trimmed).replace(/-/g, '').slice(0, 24) || `user${Date.now()}`;
+  const displayName = trimmed.slice(0, 60);
+
+  const created = await db.user.upsert({
+    where: { username: normalizedUsername },
+    update: {},
+    create: { username: normalizedUsername, displayName }
+  });
+
+  return created.id;
+}
+
 async function createWithUniqueSlug(payload: {
   title: string;
   summary: string;
@@ -91,12 +113,18 @@ export async function POST(req: NextRequest) {
       throw new AppError('Invalid request payload', 400);
     }
 
-    const owner = await getDb().user.findUnique({ where: { id: parsed.data.ownerId }, select: { id: true } });
-    if (!owner) {
-      throw new AppError('Owner not found', 404);
-    }
+    const ownerId = await resolveOwnerId(parsed.data.ownerRef);
 
-    const created = await createWithUniqueSlug(parsed.data);
+    const created = await createWithUniqueSlug({
+      title: parsed.data.title,
+      summary: parsed.data.summary,
+      content: parsed.data.content,
+      type: parsed.data.type,
+      tags: parsed.data.tags,
+      featured: parsed.data.featured,
+      ownerId
+    });
+
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     const payload = toErrorPayload(error);

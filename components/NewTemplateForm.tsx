@@ -15,7 +15,7 @@ export function NewTemplateForm() {
         .split(',')
         .map((x) => x.trim())
         .filter(Boolean),
-      ownerId: String(formData.get('ownerId') ?? '')
+      ownerRef: String(formData.get('ownerRef') ?? '')
     };
 
     const res = await fetch('/api/templates', {
@@ -25,9 +25,9 @@ export function NewTemplateForm() {
     });
 
     if (res.ok) {
-      setStatus('Template berhasil dibuat. Refresh untuk melihat daftar terbaru.');
+      setStatus('Template berhasil dibuat.');
     } else {
-      setStatus('Gagal membuat template. Pastikan data valid.');
+      setStatus('Gagal membuat template. Periksa owner/title/content lalu coba lagi.');
     }
   }
 
@@ -35,7 +35,7 @@ export function NewTemplateForm() {
     <section className="card">
       <h3>Contribute Template Baru</h3>
       <form action={submit}>
-        <input name="ownerId" placeholder="Owner ID (contoh: user internal)" required />
+        <input name="ownerRef" placeholder="Owner ID atau username atau nama baru" required />
         <div className="space" />
         <input name="title" placeholder="Judul template" required />
         <div className="space" />
