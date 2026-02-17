@@ -14,10 +14,12 @@ Kasus `/api/templates?featured=1` menghasilkan 503 umumnya karena kombinasi ini:
 2. **Schema DB belum sinkron** saat route dipanggil (startup race sebelum migrasi diterapkan).
 3. **Runtime install mode production** menghilangkan binary yang dibutuhkan bootstrap kalau dependency salah tempat.
 4. **Fallback featured list ada, tapi detail slug fallback ikut query DB** sehingga klik card fallback bisa gagal jika tidak ada fallback detail handler.
+5. **Prisma client dibuat ulang terlalu sering di runtime** dapat memicu lonjakan koneksi dan kegagalan inisialisasi DB (`503`) pada traffic burst/cold start beruntun.
 
 Perbaikan final pada codebase ini:
 - Resolver DB otomatis memilih public DB URL env saat runtime Vercel + internal host terdeteksi.
 - Startup bootstrap deterministic (`prisma generate` -> schema apply -> optional seed -> `next start`).
+- Prisma client di-cache lintas warm invocation runtime agar tidak membuat koneksi baru berulang untuk URL DB yang sama.
 - Migration history disimpan di repo (`prisma/migrations`).
 - Featured endpoint punya controlled fallback dan detail fallback slug juga tersedia.
 - Error handling strict + eksplisit (tanpa silent catch suppression).
