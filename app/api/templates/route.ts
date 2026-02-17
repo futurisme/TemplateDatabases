@@ -151,8 +151,16 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  let body: unknown;
+
   try {
-    const body = await req.json();
+    body = await req.json();
+  } catch (error) {
+    console.error('POST /api/templates invalid JSON:', error);
+    return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 });
+  }
+
+  try {
     const parsed = normalizeCreateTemplatePayload(body);
 
     const ownerId = await resolveOwnerId(parsed.ownerRef);
@@ -171,6 +179,11 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const payload = toErrorPayload(error);
     console.error('POST /api/templates failed:', error);
+
+    if (payload.status === 503) {
+      return NextResponse.json({ error: payload.message }, { status: payload.status, headers: { 'Retry-After': '30' } });
+    }
+
     return NextResponse.json({ error: payload.message }, { status: payload.status });
   }
 }

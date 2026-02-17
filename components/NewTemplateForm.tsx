@@ -33,20 +33,35 @@ function buildCreateTemplateRequest(formData: FormData): CreateTemplateRequest {
   };
 }
 
+function validateRequestBody(body: CreateTemplateRequest): string | null {
+  const errors: string[] = [];
+
+  if (body.ownerRef.length < 2 || body.ownerRef.length > 64) errors.push('ownerRef harus 2-64 karakter.');
+  if (body.title.length < 3 || body.title.length > 120) errors.push('judul harus 3-120 karakter.');
+  if (body.summary.length < 10 || body.summary.length > 300) errors.push('ringkasan harus 10-300 karakter.');
+  if (body.content.length < 10) errors.push('isi template minimal 10 karakter.');
+  if (body.tags.length < 1 || body.tags.length > 12) errors.push('jumlah tag harus 1-12 item.');
+  if (body.tags.some((tag) => tag.length < 1 || tag.length > 30)) errors.push('panjang tiap tag harus 1-30 karakter.');
+
+  return errors.length > 0 ? errors.join(' ') : null;
+}
+
 async function parseErrorResponse(response: Response): Promise<string> {
   const contentType = response.headers.get('content-type') ?? '';
 
-  if (!contentType.includes('application/json')) {
-    return `Request gagal (${response.status} ${response.statusText}).`;
-  }
+  if (contentType.includes('application/json')) {
+    const textBody = await response.text();
 
-  try {
-    const parsed = (await response.json()) as ErrorResponse;
-    if (parsed.error && parsed.error.trim().length > 0) {
-      return parsed.error.trim();
+    if (textBody.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(textBody) as ErrorResponse;
+        if (typeof parsed.error === 'string' && parsed.error.trim().length > 0) {
+          return parsed.error.trim();
+        }
+      } catch (error) {
+        console.error('Failed to parse API error response JSON:', error, textBody);
+      }
     }
-  } catch (error) {
-    console.error('Failed to parse API error response:', error);
   }
 
   return `Request gagal (${response.status} ${response.statusText}).`;
@@ -64,6 +79,11 @@ export function NewTemplateForm() {
 
     try {
       const requestBody = buildCreateTemplateRequest(formData);
+      const validationError = validateRequestBody(requestBody);
+      if (validationError) {
+        setStatus(validationError);
+        return;
+      }
 
       const response = await fetch('/api/templates', {
         method: 'POST',
@@ -72,7 +92,9 @@ export function NewTemplateForm() {
       });
 
       if (!response.ok) {
-        throw new Error(await parseErrorResponse(response));
+        const serverMessage = await parseErrorResponse(response);
+        setStatus(serverMessage);
+        return;
       }
 
       setStatus('Template berhasil dibuat.');
@@ -88,13 +110,34 @@ export function NewTemplateForm() {
     <section className="card">
       <h3>Contribute Template Baru</h3>
       <form action={submit}>
-        <input name="ownerRef" placeholder="Owner ID atau username atau nama baru" required disabled={isSubmitting} />
+        <input
+          name="ownerRef"
+          placeholder="Owner ID atau username atau nama baru"
+          required
+          minLength={2}
+          maxLength={64}
+          disabled={isSubmitting}
+        />
         <div className="space" />
-        <input name="title" placeholder="Judul template" required disabled={isSubmitting} />
+        <input name="title" placeholder="Judul template" required minLength={3} maxLength={120} disabled={isSubmitting} />
         <div className="space" />
-        <textarea name="summary" placeholder="Ringkasan" required disabled={isSubmitting} />
+        <textarea
+          name="summary"
+          placeholder="Ringkasan"
+          required
+          minLength={10}
+          maxLength={300}
+          disabled={isSubmitting}
+        />
         <div className="space" />
-        <textarea name="content" placeholder="Isi template" required rows={6} disabled={isSubmitting} />
+        <textarea
+          name="content"
+          placeholder="Isi template"
+          required
+          minLength={10}
+          rows={6}
+          disabled={isSubmitting}
+        />
         <div className="space" />
         <select name="type" defaultValue="CODE" disabled={isSubmitting}>
           <option value="CODE">CODE</option>
