@@ -81,6 +81,35 @@ Cek endpoint ini setelah deploy:
 
 ---
 
+
+### F. Debug 400 pada `POST /api/templates`
+Jika frontend menampilkan `400 Bad Request`, cek ini berurutan:
+1. Payload wajib berisi `title`, `summary`, `content`, `type`, `tags`, dan salah satu `ownerRef` atau `ownerId`.
+2. Constraint validasi:
+   - `title`: 3..120 karakter
+   - `summary`: 10..300 karakter
+   - `content`: minimal 10 karakter
+   - `type`: CODE/IDEA/STORY/OTHER
+   - `ownerRef`/`ownerId`: 2..64 karakter
+   - `tags`: maksimal 12 item, tiap tag 1..30 karakter
+3. `ownerRef` bisa berupa:
+   - user id existing, atau
+   - username existing, atau
+   - nama baru (server otomatis membuat owner via upsert aman).
+4. Jika masih gagal, lihat response `error` dari API (sekarang detail field-level).
+
+Contoh payload valid:
+```json
+{
+  "title": "Universal API Boilerplate",
+  "summary": "Template API universal untuk proyek open source.",
+  "content": "Isi lengkap template minimal 10 karakter...",
+  "type": "CODE",
+  "tags": ["api", "boilerplate"],
+  "ownerRef": "globaldev"
+}
+```
+
 ## Menjalankan Lokal
 ```bash
 npm install

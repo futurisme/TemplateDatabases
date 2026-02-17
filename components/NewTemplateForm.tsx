@@ -24,10 +24,12 @@ export function NewTemplateForm() {
       body: JSON.stringify(payload)
     });
 
+    const payload = (await res.json()) as { error?: string };
+
     if (res.ok) {
       setStatus('Template berhasil dibuat.');
     } else {
-      setStatus('Gagal membuat template. Periksa owner/title/content lalu coba lagi.');
+      setStatus(payload.error ?? 'Gagal membuat template. Periksa owner/title/content lalu coba lagi.');
     }
   }
 

@@ -3,12 +3,69 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { getDb } from '@/lib/db';
-import { createTemplateSchema } from '@/lib/types';
 import { compactText, slugify } from '@/lib/utils';
 import { AppError, getPrismaAvailabilityIssue, toErrorPayload } from '@/lib/errors';
 import { featuredFallback } from '@/lib/featured-fallback';
 
 export const revalidate = 0;
+
+type CreateTemplateInput = {
+  title: string;
+  summary: string;
+  content: string;
+  type: 'CODE' | 'IDEA' | 'STORY' | 'OTHER';
+  tags: string[];
+  ownerRef: string;
+  featured?: boolean;
+};
+
+function normalizeCreateTemplatePayload(body: unknown): CreateTemplateInput {
+  if (!body || typeof body !== 'object') {
+    throw new AppError('Invalid request payload: body must be an object', 400);
+  }
+
+  const raw = body as Record<string, unknown>;
+
+  const title = String(raw.title ?? '').trim();
+  const summary = String(raw.summary ?? '').trim();
+  const content = String(raw.content ?? '').trim();
+  const typeRaw = String(raw.type ?? 'OTHER').trim().toUpperCase();
+  const ownerRef = String(raw.ownerRef ?? raw.ownerId ?? '').trim();
+  const featured = raw.featured === true;
+
+  const tagsInput = raw.tags;
+  const tags = Array.isArray(tagsInput)
+    ? tagsInput.map((v) => String(v).trim()).filter(Boolean)
+    : String(tagsInput ?? '')
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean);
+
+  const allowedTypes: CreateTemplateInput['type'][] = ['CODE', 'IDEA', 'STORY', 'OTHER'];
+
+  const errors: string[] = [];
+  if (title.length < 3 || title.length > 120) errors.push('title must be between 3 and 120 characters');
+  if (summary.length < 10 || summary.length > 300) errors.push('summary must be between 10 and 300 characters');
+  if (content.length < 10) errors.push('content must be at least 10 characters');
+  if (!allowedTypes.includes(typeRaw as CreateTemplateInput['type'])) errors.push('type must be CODE|IDEA|STORY|OTHER');
+  if (ownerRef.length < 2 || ownerRef.length > 64) errors.push('ownerRef (or ownerId) must be between 2 and 64 characters');
+  if (tags.length > 12) errors.push('tags cannot exceed 12 items');
+  if (tags.some((t) => t.length < 1 || t.length > 30)) errors.push('each tag length must be between 1 and 30 characters');
+
+  if (errors.length > 0) {
+    throw new AppError(`Invalid request payload: ${errors.join('; ')}`, 400);
+  }
+
+  return {
+    title,
+    summary,
+    content,
+    type: typeRaw as CreateTemplateInput['type'],
+    tags,
+    ownerRef,
+    featured
+  };
+}
 
 async function resolveOwnerId(ownerRef: string): Promise<string> {
   const db = getDb();
@@ -25,7 +82,7 @@ async function resolveOwnerId(ownerRef: string): Promise<string> {
 
   const created = await db.user.upsert({
     where: { username: normalizedUsername },
-    update: {},
+    update: { displayName },
     create: { username: normalizedUsername, displayName }
   });
 
@@ -107,21 +164,17 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const parsed = createTemplateSchema.safeParse(body);
+    const parsed = normalizeCreateTemplatePayload(body);
 
-    if (!parsed.success) {
-      throw new AppError('Invalid request payload', 400);
-    }
-
-    const ownerId = await resolveOwnerId(parsed.data.ownerRef);
+    const ownerId = await resolveOwnerId(parsed.ownerRef);
 
     const created = await createWithUniqueSlug({
-      title: parsed.data.title,
-      summary: parsed.data.summary,
-      content: parsed.data.content,
-      type: parsed.data.type,
-      tags: parsed.data.tags,
-      featured: parsed.data.featured,
+      title: parsed.title,
+      summary: parsed.summary,
+      content: parsed.content,
+      type: parsed.type,
+      tags: parsed.tags,
+      featured: parsed.featured,
       ownerId
     });
 
