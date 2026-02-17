@@ -53,7 +53,12 @@ export function ContributeGate() {
       return;
     }
 
-    const nextProfile = { name, password };
+    const nextProfile = { name: name.trim(), password };
+    if (!nextProfile.name) {
+      setError('Nama wajib diisi.');
+      return;
+    }
+
     saveProfile(nextProfile);
     setProfile(nextProfile);
   }
@@ -88,7 +93,7 @@ export function ContributeGate() {
           </section>
         </div>
       )}
-      {isRegistered && <NewTemplateForm />}
+      {isRegistered && <NewTemplateForm ownerRef={profile.name} />}
     </>
   );
 }

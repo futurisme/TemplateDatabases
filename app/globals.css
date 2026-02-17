@@ -121,3 +121,29 @@ button, .button-link {
 .register-modal h2 {
   margin-top: 0;
 }
+
+
+.tags-field {
+  display: flex;
+  align-items: center;
+  border: 1px solid #c5d6f9;
+  border-radius: 10px;
+  background: #fdfefe;
+  overflow: hidden;
+}
+
+.hash-prefix {
+  padding: 10px 0 10px 12px;
+  color: #1d3f86;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.tags-input {
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+.tags-input:focus {
+  outline: none;
+}

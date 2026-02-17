@@ -13,35 +13,47 @@ type CreateTemplateRequest = {
 
 type ErrorResponse = { error?: string };
 
-const ALLOWED_TYPES = new Set<CreateTemplateRequest['type']>(['CODE', 'IDEA', 'STORY', 'OTHER']);
+type Props = {
+  ownerRef: string;
+};
 
-function buildCreateTemplateRequest(formData: FormData): CreateTemplateRequest {
+const ALLOWED_TYPES = new Set<CreateTemplateRequest['type']>(['CODE', 'IDEA', 'STORY', 'OTHER']);
+const TAG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,29}$/i;
+
+function parseTags(raw: string): string[] {
+  return raw
+    .split(/[\s,]+/)
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .map((tag) => tag.replace(/^#+/, '').trim())
+    .filter(Boolean)
+    .map((tag) => tag.toLowerCase());
+}
+
+function buildCreateTemplateRequest(formData: FormData, ownerRef: string): CreateTemplateRequest {
   const rawType = String(formData.get('type') ?? 'OTHER').trim().toUpperCase();
 
   return {
-    ownerRef: String(formData.get('ownerRef') ?? '').trim(),
+    ownerRef: ownerRef.trim(),
     title: String(formData.get('title') ?? '').trim(),
     summary: String(formData.get('summary') ?? '').trim(),
     content: String(formData.get('content') ?? '').trim(),
     type: ALLOWED_TYPES.has(rawType as CreateTemplateRequest['type'])
       ? (rawType as CreateTemplateRequest['type'])
       : 'OTHER',
-    tags: String(formData.get('tags') ?? '')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean)
+    tags: parseTags(String(formData.get('tags') ?? ''))
   };
 }
 
 function validateRequestBody(body: CreateTemplateRequest): string | null {
   const errors: string[] = [];
 
-  if (body.ownerRef.length < 2 || body.ownerRef.length > 64) errors.push('ownerRef harus 2-64 karakter.');
+  if (!body.ownerRef) errors.push('Profil tidak valid, silakan register ulang.');
   if (body.title.length < 3 || body.title.length > 120) errors.push('judul harus 3-120 karakter.');
-  if (body.summary.length < 10 || body.summary.length > 300) errors.push('ringkasan harus 10-300 karakter.');
+  if (body.summary.length < 10 || body.summary.length > 300) errors.push('deskripsi harus 10-300 karakter.');
   if (body.content.length < 10) errors.push('isi template minimal 10 karakter.');
   if (body.tags.length < 1 || body.tags.length > 12) errors.push('jumlah tag harus 1-12 item.');
-  if (body.tags.some((tag) => tag.length < 1 || tag.length > 30)) errors.push('panjang tiap tag harus 1-30 karakter.');
+  if (body.tags.some((tag) => !TAG_PATTERN.test(tag))) errors.push('format tag tidak valid, gunakan huruf/angka/-/_ saja.');
 
   return errors.length > 0 ? errors.join(' ') : null;
 }
@@ -67,7 +79,7 @@ async function parseErrorResponse(response: Response): Promise<string> {
   return `Request gagal (${response.status} ${response.statusText}).`;
 }
 
-export function NewTemplateForm() {
+export function NewTemplateForm({ ownerRef }: Props) {
   const [status, setStatus] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -78,7 +90,7 @@ export function NewTemplateForm() {
     setIsSubmitting(true);
 
     try {
-      const requestBody = buildCreateTemplateRequest(formData);
+      const requestBody = buildCreateTemplateRequest(formData, ownerRef);
       const validationError = validateRequestBody(requestBody);
       if (validationError) {
         setStatus(validationError);
@@ -110,20 +122,11 @@ export function NewTemplateForm() {
     <section className="card">
       <h3>Contribute Template Baru</h3>
       <form action={submit}>
-        <input
-          name="ownerRef"
-          placeholder="Owner ID atau username atau nama baru"
-          required
-          minLength={2}
-          maxLength={64}
-          disabled={isSubmitting}
-        />
-        <div className="space" />
-        <input name="title" placeholder="Judul template" required minLength={3} maxLength={120} disabled={isSubmitting} />
+        <input name="title" placeholder="Judul Template" required minLength={3} maxLength={120} disabled={isSubmitting} />
         <div className="space" />
         <textarea
           name="summary"
-          placeholder="Ringkasan"
+          placeholder="Deskripsi"
           required
           minLength={10}
           maxLength={300}
@@ -132,7 +135,7 @@ export function NewTemplateForm() {
         <div className="space" />
         <textarea
           name="content"
-          placeholder="Isi template"
+          placeholder="Isi Template"
           required
           minLength={10}
           rows={6}
@@ -146,7 +149,10 @@ export function NewTemplateForm() {
           <option value="OTHER">OTHER</option>
         </select>
         <div className="space" />
-        <input name="tags" placeholder="tag1, tag2, tag3" required disabled={isSubmitting} />
+        <label className="tags-field">
+          <span className="hash-prefix">#</span>
+          <input name="tags" placeholder="tag1 tag2 tag3" required disabled={isSubmitting} className="tags-input" />
+        </label>
         <div className="space" />
         <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Publishing...' : 'Publish Template'}
