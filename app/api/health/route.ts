@@ -3,11 +3,13 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { toErrorPayload } from '@/lib/errors';
+import { resolveDatabaseConfig } from '@/lib/env';
 
 export async function GET() {
   const timestamp = new Date().toISOString();
 
   try {
+    const config = resolveDatabaseConfig();
     await getDb().$queryRaw`SELECT 1`;
 
     return NextResponse.json(
@@ -15,6 +17,8 @@ export async function GET() {
         ok: true,
         service: 'templatedatabases',
         database: 'ready',
+        dbHost: config.hostname,
+        dbSource: config.source,
         timestamp
       },
       {
@@ -35,7 +39,7 @@ export async function GET() {
       },
       {
         status: payload.status,
-        headers: { 'Cache-Control': 'no-store' }
+        headers: { 'Cache-Control': 'no-store', 'Retry-After': payload.status === 503 ? '30' : '0' }
       }
     );
   }

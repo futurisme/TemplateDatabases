@@ -4,22 +4,25 @@ const requiredEnv = ['DATABASE_URL'] as const;
 
 type ParsedDbUrl = {
   label: string;
-  value: string;
+  raw: string;
   hostname: string;
-  username: string;
-  password: string;
-  database: string;
 };
 
-function parseDbUrl(value: string, label: string): ParsedDbUrl {
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
+type ResolvedDbConfig = {
+  url: string;
+  source: string;
+  hostname: string;
+};
+
+function parseDbUrl(rawValue: string, label: string): ParsedDbUrl {
+  const raw = rawValue.trim();
+  if (raw.length === 0) {
     throw new AppError(`${label} is empty`, 503);
   }
 
   let parsed: URL;
   try {
-    parsed = new URL(trimmed);
+    parsed = new URL(raw);
   } catch {
     throw new AppError(`${label} is invalid`, 503);
   }
@@ -28,47 +31,23 @@ function parseDbUrl(value: string, label: string): ParsedDbUrl {
     throw new AppError(`${label} must use postgres/postgresql protocol`, 503);
   }
 
-  return {
-    label,
-    value: trimmed,
-    hostname: parsed.hostname.toLowerCase(),
-    username: decodeURIComponent(parsed.username),
-    password: decodeURIComponent(parsed.password),
-    database: parsed.pathname.replace(/^\//, '')
-  };
-}
-
-function getPublicDbCandidates(): ParsedDbUrl[] {
-  const pairs: Array<[string, string | undefined]> = [
-    ['DATABASE_URL_PUBLIC', process.env.DATABASE_URL_PUBLIC],
-    ['DATABASE_PUBLIC_URL', process.env.DATABASE_PUBLIC_URL],
-    ['POSTGRES_PRISMA_URL', process.env.POSTGRES_PRISMA_URL],
-    ['POSTGRES_URL', process.env.POSTGRES_URL]
-  ];
-
-  const seen = new Set<string>();
-  const parsed: ParsedDbUrl[] = [];
-
-  for (const [label, value] of pairs) {
-    const trimmed = value?.trim();
-    if (!trimmed || seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    parsed.push(parseDbUrl(trimmed, label));
+  if (!parsed.username || !parsed.password || parsed.pathname.replace(/^\//, '').length === 0) {
+    throw new AppError(`${label} must include username, password, and database name`, 503);
   }
 
-  return parsed;
+  return { label, raw, hostname: parsed.hostname.toLowerCase() };
 }
 
 function isInternalRailwayHost(hostname: string): boolean {
   return hostname.endsWith('.railway.internal');
 }
 
-function ensureSslMode(url: string): string {
+function withRequiredSsl(url: string): string {
   const parsed = new URL(url);
   const host = parsed.hostname.toLowerCase();
-  const mustUseSsl = host.endsWith('.proxy.rlwy.net') || host.endsWith('.up.railway.app');
+  const shouldRequireSsl = host.endsWith('.proxy.rlwy.net') || host.endsWith('.up.railway.app');
 
-  if (mustUseSsl && !parsed.searchParams.has('sslmode')) {
+  if (shouldRequireSsl && !parsed.searchParams.has('sslmode')) {
     parsed.searchParams.set('sslmode', 'require');
     return parsed.toString();
   }
@@ -76,37 +55,56 @@ function ensureSslMode(url: string): string {
   return url;
 }
 
-function credentialsMatch(left: ParsedDbUrl, right: ParsedDbUrl): boolean {
-  return left.username === right.username && left.password === right.password && left.database === right.database;
-}
+function getExplicitPublicCandidate(): ParsedDbUrl | null {
+  const explicit = [
+    ['DATABASE_URL_PUBLIC', process.env.DATABASE_URL_PUBLIC],
+    ['DATABASE_PUBLIC_URL', process.env.DATABASE_PUBLIC_URL]
+  ] as const;
 
-function selectBestDatabaseUrl(primary: ParsedDbUrl, publicCandidates: ParsedDbUrl[]): string {
-  if (!isInternalRailwayHost(primary.hostname)) {
-    return ensureSslMode(primary.value);
+  for (const [label, value] of explicit) {
+    if (value && value.trim().length > 0) {
+      return parseDbUrl(value, label);
+    }
   }
 
-  const publicOnly = publicCandidates.filter((candidate) => !isInternalRailwayHost(candidate.hostname));
+  return null;
+}
 
-  if (publicOnly.length === 0) {
+function resolveFromPrimary(primary: ParsedDbUrl): ResolvedDbConfig {
+  if (!isInternalRailwayHost(primary.hostname)) {
+    return {
+      url: withRequiredSsl(primary.raw),
+      source: primary.label,
+      hostname: primary.hostname
+    };
+  }
+
+  const publicCandidate = getExplicitPublicCandidate();
+  if (!publicCandidate) {
     throw new AppError(
-      'Invalid DB config: DATABASE_URL points to railway.internal but no public DB URL is configured. Set DATABASE_URL_PUBLIC or DATABASE_PUBLIC_URL to Railway public connection string.',
+      'DATABASE_URL is internal-only (.railway.internal). Set DATABASE_PUBLIC_URL (or DATABASE_URL_PUBLIC) to a public Railway URL for runtime requests.',
       503
     );
   }
 
-  const credentialMatched = publicOnly.find((candidate) => credentialsMatch(primary, candidate));
-  if (credentialMatched) {
-    return ensureSslMode(credentialMatched.value);
+  if (isInternalRailwayHost(publicCandidate.hostname)) {
+    throw new AppError('DATABASE_PUBLIC_URL/DATABASE_URL_PUBLIC cannot use .railway.internal host', 503);
   }
 
-  const labels = publicOnly.map((candidate) => candidate.label).join(', ');
-  throw new AppError(
-    `Invalid DB config: none of public DB URLs (${labels}) match DATABASE_URL credentials/database. Ensure username/password/database are identical between internal and public Railway URLs.`,
-    503
-  );
+  return {
+    url: withRequiredSsl(publicCandidate.raw),
+    source: publicCandidate.label,
+    hostname: publicCandidate.hostname
+  };
 }
 
-export function resolveDatabaseUrl(): string {
+let cached: ResolvedDbConfig | null = null;
+
+export function resolveDatabaseConfig(): ResolvedDbConfig {
+  if (cached) {
+    return cached;
+  }
+
   for (const key of requiredEnv) {
     if (!process.env[key] || process.env[key]?.trim().length === 0) {
       throw new AppError(`Missing required environment variable: ${key}`, 503);
@@ -114,7 +112,11 @@ export function resolveDatabaseUrl(): string {
   }
 
   const primary = parseDbUrl(process.env.DATABASE_URL!, 'DATABASE_URL');
-  const publicCandidates = getPublicDbCandidates();
+  cached = resolveFromPrimary(primary);
 
-  return selectBestDatabaseUrl(primary, publicCandidates);
+  return cached;
+}
+
+export function resolveDatabaseUrl(): string {
+  return resolveDatabaseConfig().url;
 }
