@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
 type Template = {
@@ -61,6 +62,22 @@ export default function TemplateDetail({ params }: { params: { slug: string } })
     };
   }, [params.slug]);
 
+
+
+  const remixHref = useMemo(() => {
+    if (!template) return '/contribute';
+
+    const params = new URLSearchParams({
+      title: `${template.title} Remix`,
+      summary: template.summary,
+      content: template.content,
+      type: template.type,
+      tags: template.tags.join(' ')
+    });
+
+    return `/contribute?${params.toString()}`;
+  }, [template]);
+
   const canContribute = useMemo(() => {
     if (!template || !userId) return false;
     return template.ownerId !== userId;
@@ -118,6 +135,7 @@ export default function TemplateDetail({ params }: { params: { slug: string } })
         </pre>
         <div className="row">
           <button onClick={copyTemplate}>Copy</button>
+          <Link className="button-link subtle" href={remixHref}>Fork / Remix</Link>
           {canContribute && <button onClick={sendContribution}>Contribute</button>}
         </div>
         {canContribute && (

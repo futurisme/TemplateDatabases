@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type CreateTemplateRequest = {
   ownerRef: string;
@@ -26,8 +26,17 @@ type Token = {
   type: TokenType;
 };
 
+const draftKey = 'tdb_contribute_draft_v2';
+
 const ALLOWED_TYPES = new Set<CreateTemplateRequest['type']>(['CODE', 'IDEA', 'STORY', 'OTHER']);
 const TAG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,29}$/i;
+const TAG_SYNONYM: Record<string, string> = {
+  py: 'python',
+  rbx: 'roblox',
+  lua: 'luau',
+  js: 'javascript',
+  ts: 'typescript'
+};
 
 const LUAU_KEYWORDS = new Set([
   'local', 'function', 'end', 'then', 'elseif', 'repeat', 'until', 'nil', 'not', 'and', 'or', 'for', 'while', 'do',
@@ -53,6 +62,11 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
+function normalizeTag(tag: string): string {
+  const base = tag.toLowerCase();
+  return TAG_SYNONYM[base] ?? base;
+}
+
 function parseTags(raw: string): string[] {
   return raw
     .split(/[\s,]+/)
@@ -60,7 +74,7 @@ function parseTags(raw: string): string[] {
     .filter(Boolean)
     .map((tag) => tag.replace(/^#+/, '').trim())
     .filter(Boolean)
-    .map((tag) => tag.toLowerCase());
+    .map((tag) => normalizeTag(tag));
 }
 
 function buildCreateTemplateRequest(formData: FormData, ownerRef: string): CreateTemplateRequest {
@@ -110,6 +124,30 @@ function detectLanguage(content: string): DetectedLanguage {
   return luauHits > pythonHits ? 'Luau' : 'Python';
 }
 
+function lintHints(content: string, language: DetectedLanguage): string[] {
+  const hints: string[] = [];
+  const lines = content.split('\n');
+  const tooLong = lines.some((line) => line.length > 110);
+  const tabIndent = lines.some((line) => /^\t+/.test(line));
+  const spaceIndent = lines.some((line) => /^ {2,}/.test(line));
+
+  if (tooLong) hints.push('Ada baris kode lebih dari 110 karakter.');
+  if (tabIndent && spaceIndent) hints.push('Indentasi tercampur tab dan spasi.');
+
+  if (language === 'Python') {
+    const openColon = lines.some((line) => /\b(if|for|while|def|class|elif|else|try|except|with)\b.*[^:]$/.test(line.trim()));
+    if (openColon) hints.push('Kemungkinan ada statement Python yang seharusnya diakhiri titik dua (:).');
+  }
+
+  if (language === 'Luau') {
+    const fnCount = (content.match(/\bfunction\b/g) ?? []).length;
+    const endCount = (content.match(/\bend\b/g) ?? []).length;
+    if (fnCount > endCount) hints.push('Kemungkinan ada function Luau yang belum ditutup dengan end.');
+  }
+
+  return hints.slice(0, 3);
+}
+
 function lexLine(line: string, language: DetectedLanguage): Token[] {
   if (!line) return [{ text: ' ', type: 'plain' }];
 
@@ -121,8 +159,8 @@ function lexLine(line: string, language: DetectedLanguage): Token[] {
 
   while (i < line.length) {
     const rest = line.slice(i);
-
     const commentStart = language === 'Luau' ? '--' : language === 'Python' ? '#' : '';
+
     if (commentStart && rest.startsWith(commentStart)) {
       tokens.push({ text: rest, type: 'comment' });
       break;
@@ -152,13 +190,9 @@ function lexLine(line: string, language: DetectedLanguage): Token[] {
     const wordMatch = rest.match(/^\b[A-Za-z_][A-Za-z0-9_]*\b/);
     if (wordMatch) {
       const word = wordMatch[0];
-      if (keywords.has(word)) {
-        tokens.push({ text: word, type: 'keyword' });
-      } else if (builtins.has(word)) {
-        tokens.push({ text: word, type: 'builtin' });
-      } else {
-        tokens.push({ text: word, type: 'plain' });
-      }
+      if (keywords.has(word)) tokens.push({ text: word, type: 'keyword' });
+      else if (builtins.has(word)) tokens.push({ text: word, type: 'builtin' });
+      else tokens.push({ text: word, type: 'plain' });
       i += word.length;
       continue;
     }
@@ -180,12 +214,7 @@ function lexLine(line: string, language: DetectedLanguage): Token[] {
 function highlightToHtml(content: string, language: DetectedLanguage): string {
   const lines = content.split('\n').slice(0, 220);
   return lines
-    .map((line) => {
-      const tokens = lexLine(line, language);
-      return tokens
-        .map((token) => `<span class="code-${token.type}">${escapeHtml(token.text)}</span>`)
-        .join('');
-    })
+    .map((line) => lexLine(line, language).map((t) => `<span class="code-${t.type}">${escapeHtml(t.text)}</span>`).join(''))
     .join('\n');
 }
 
@@ -215,18 +244,64 @@ export function NewTemplateForm({ ownerRef }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedType, setSelectedType] = useState<CreateTemplateRequest['type']>('CODE');
   const [contentDraft, setContentDraft] = useState('');
+  const [titleDraft, setTitleDraft] = useState('');
+  const [summaryDraft, setSummaryDraft] = useState('');
+  const [tagDraft, setTagDraft] = useState('');
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const highlightRef = useRef<HTMLPreElement | null>(null);
 
-  const detectedLanguage = useMemo(() => {
-    if (selectedType !== 'CODE') return 'Unknown';
-    return detectLanguage(contentDraft);
-  }, [contentDraft, selectedType]);
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const prefillTitle = params.get('title') ?? '';
+      const prefillSummary = params.get('summary') ?? '';
+      const prefillContent = params.get('content') ?? '';
+      const prefillType = params.get('type')?.toUpperCase() as CreateTemplateRequest['type'] | undefined;
+      const prefillTags = params.get('tags') ?? '';
 
-  const highlightedHtml = useMemo(() => {
-    if (selectedType !== 'CODE') return '';
-    return highlightToHtml(contentDraft, detectedLanguage);
-  }, [contentDraft, detectedLanguage, selectedType]);
+      const storedRaw = localStorage.getItem(draftKey);
+      if (storedRaw) {
+        const draft = JSON.parse(storedRaw) as Partial<Record<'title' | 'summary' | 'content' | 'type' | 'tags', string>>;
+        if (typeof draft.title === 'string') setTitleDraft(draft.title);
+        if (typeof draft.summary === 'string') setSummaryDraft(draft.summary);
+        if (typeof draft.content === 'string') setContentDraft(draft.content);
+        if (typeof draft.type === 'string' && ALLOWED_TYPES.has(draft.type as CreateTemplateRequest['type'])) {
+          setSelectedType(draft.type as CreateTemplateRequest['type']);
+        }
+        if (typeof draft.tags === 'string') setTagDraft(draft.tags);
+      }
+
+      if (prefillTitle) setTitleDraft(prefillTitle);
+      if (prefillSummary) setSummaryDraft(prefillSummary);
+      if (prefillContent) setContentDraft(prefillContent);
+      if (prefillType && ALLOWED_TYPES.has(prefillType)) setSelectedType(prefillType);
+      if (prefillTags) setTagDraft(prefillTags);
+    } catch (error) {
+      console.error('Failed to initialize contribute draft:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        draftKey,
+        JSON.stringify({
+          title: titleDraft,
+          summary: summaryDraft,
+          content: contentDraft,
+          type: selectedType,
+          tags: tagDraft
+        })
+      );
+    } catch (error) {
+      console.error('Failed to persist contribute draft:', error);
+    }
+  }, [titleDraft, summaryDraft, contentDraft, selectedType, tagDraft]);
+
+  const detectedLanguage = useMemo(() => (selectedType === 'CODE' ? detectLanguage(contentDraft) : 'Unknown'), [contentDraft, selectedType]);
+  const highlightedHtml = useMemo(() => (selectedType === 'CODE' ? highlightToHtml(contentDraft, detectedLanguage) : ''), [contentDraft, detectedLanguage, selectedType]);
+  const codeHints = useMemo(() => (selectedType === 'CODE' ? lintHints(contentDraft, detectedLanguage) : []), [contentDraft, detectedLanguage, selectedType]);
+  const normalizedTagsPreview = useMemo(() => parseTags(tagDraft).join(' #'), [tagDraft]);
 
   function syncScroll() {
     if (!editorRef.current || !highlightRef.current) return;
@@ -260,6 +335,7 @@ export function NewTemplateForm({ ownerRef }: Props) {
         return;
       }
 
+      localStorage.removeItem(draftKey);
       setStatus('Template berhasil dibuat.');
     } catch (error) {
       console.error('Submit template failed:', error);
@@ -284,6 +360,8 @@ export function NewTemplateForm({ ownerRef }: Props) {
           maxLength={120}
           disabled={isSubmitting}
           className="col-6"
+          value={titleDraft}
+          onChange={(event) => setTitleDraft(event.target.value)}
         />
         <select
           name="type"
@@ -307,6 +385,8 @@ export function NewTemplateForm({ ownerRef }: Props) {
           disabled={isSubmitting}
           rows={2}
           className="col-12"
+          value={summaryDraft}
+          onChange={(event) => setSummaryDraft(event.target.value)}
         />
 
         {selectedType === 'CODE' ? (
@@ -341,10 +421,28 @@ export function NewTemplateForm({ ownerRef }: Props) {
           />
         )}
 
+        {codeHints.length > 0 && (
+          <ul className="lint-hints col-12">
+            {codeHints.map((hint) => (
+              <li key={hint}>{hint}</li>
+            ))}
+          </ul>
+        )}
+
         <label className="tags-field col-12">
           <span className="hash-prefix">#</span>
-          <input name="tags" placeholder="tag1 tag2 tag3" required disabled={isSubmitting} className="tags-input" />
+          <input
+            name="tags"
+            placeholder="tag1 tag2 tag3"
+            required
+            disabled={isSubmitting}
+            className="tags-input"
+            value={tagDraft}
+            onChange={(event) => setTagDraft(event.target.value)}
+          />
         </label>
+
+        {normalizedTagsPreview && <p className="muted col-12">Tag normalized: #{normalizedTagsPreview}</p>}
 
         <button type="submit" disabled={isSubmitting} className="col-12 submit-wide">
           {isSubmitting ? 'Publishing...' : 'Publish Template'}
