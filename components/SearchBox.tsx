@@ -22,6 +22,8 @@ const searchCache = new Map<string, SearchResult[]>();
 const instantPool = new Map<string, SearchResult>();
 const recentKey = 'tdb_recent_searches_v1';
 const savedKey = 'tdb_saved_searches_v1';
+const filterModes: FilterType[] = ['ALL', 'CODE', 'IDEA', 'STORY', 'OTHER'];
+const sortModes: SortMode[] = ['relevance', 'newest'];
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
@@ -85,7 +87,7 @@ function localRank(item: SearchResult, query: string, type: FilterType): number 
 }
 
 function instantSearch(query: string, type: FilterType, sort: SortMode): SearchResult[] {
-  const ranked = Array.from(instantPool.values())
+  return Array.from(instantPool.values())
     .map((item) => ({ item, score: localRank(item, query, type) }))
     .filter((entry) => entry.score > 0)
     .sort((a, b) => {
@@ -94,8 +96,16 @@ function instantSearch(query: string, type: FilterType, sort: SortMode): SearchR
     })
     .slice(0, 20)
     .map((entry) => entry.item);
+}
 
-  return ranked;
+function cycleFilter(current: FilterType): FilterType {
+  const nextIndex = (filterModes.indexOf(current) + 1) % filterModes.length;
+  return filterModes[nextIndex];
+}
+
+function cycleSort(current: SortMode): SortMode {
+  const nextIndex = (sortModes.indexOf(current) + 1) % sortModes.length;
+  return sortModes[nextIndex];
 }
 
 export function SearchBox() {
@@ -255,23 +265,29 @@ export function SearchBox() {
     <section className="card compact search-shell">
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <h2>Search</h2>
-        <button type="button" className="button-link subtle" onClick={pinSearch}>
-          Save query
-        </button>
-      </div>
-
-      <div className="row">
-        <select value={filterType} onChange={(e) => setFilterType(e.target.value as FilterType)}>
-          <option value="ALL">All Types</option>
-          <option value="CODE">CODE</option>
-          <option value="IDEA">IDEA</option>
-          <option value="STORY">STORY</option>
-          <option value="OTHER">OTHER</option>
-        </select>
-        <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)}>
-          <option value="relevance">Relevance</option>
-          <option value="newest">Newest</option>
-        </select>
+        <div className="row">
+          <button
+            type="button"
+            className="mini-icon-button"
+            title={`Filter: ${filterType}`}
+            aria-label={`Filter type ${filterType}. Klik untuk ganti.`}
+            onClick={() => setFilterType((current) => cycleFilter(current))}
+          >
+            ◈
+          </button>
+          <button
+            type="button"
+            className="mini-icon-button"
+            title={`Sort: ${sortMode}`}
+            aria-label={`Sort mode ${sortMode}. Klik untuk ganti.`}
+            onClick={() => setSortMode((current) => cycleSort(current))}
+          >
+            ↕
+          </button>
+          <button type="button" className="button-link subtle" onClick={pinSearch}>
+            Save query
+          </button>
+        </div>
       </div>
 
       <input

@@ -69,6 +69,25 @@ button, .button-link {
 }
 
 .button-link.subtle { background: #eef4ff; color: #1d3f86; border-color: #d2e0fb; }
+
+.mini-icon-button {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0;
+  border-radius: 9px;
+  background: #eef4ff;
+  color: #1d3f86;
+  border: 1px solid #d2e0fb;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mini-icon-button:hover {
+  background: #e1edff;
+}
+
 .muted { color: var(--muted); }
 .row { display: flex; gap: 10px; align-items: center; }
 .space { height: 10px; }
