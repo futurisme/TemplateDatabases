@@ -27,6 +27,17 @@ function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
 }
 
+function parseSearchPayload(text: string): SearchPayload {
+  if (!text) return [];
+
+  try {
+    return JSON.parse(text) as SearchPayload;
+  } catch (error) {
+    console.error('Invalid search API JSON payload:', error, text);
+    return { error: 'Invalid API response' };
+  }
+}
+
 function normalizeQuery(raw: string): string {
   return raw.trim().toLowerCase().replace(/\s+/g, ' ');
 }
@@ -108,20 +119,22 @@ export function SearchBox() {
   useEffect(() => {
     const ctrl = new AbortController();
 
-    const warmup = window.setTimeout(async () => {
+    const warmup = async () => {
       try {
         const res = await fetch('/api/templates?featured=1', { signal: ctrl.signal, cache: 'force-cache' });
-        const text = await res.text();
-        const payload = text ? (JSON.parse(text) as SearchPayload) : [];
+        const payload = parseSearchPayload(await res.text());
         if (res.ok && Array.isArray(payload)) registerPool(payload);
       } catch (error) {
         if (!isAbortError(error)) console.error('Search warmup failed:', error);
       }
-    }, 0);
+    };
+
+    warmup().catch((error) => {
+      if (!isAbortError(error)) console.error('Search warmup failed:', error);
+    });
 
     return () => {
       ctrl.abort();
-      window.clearTimeout(warmup);
     };
   }, []);
 
@@ -168,20 +181,13 @@ export function SearchBox() {
           cache: 'force-cache'
         });
 
-        const text = await res.text();
-        let payload: SearchPayload;
-        try {
-          payload = text ? (JSON.parse(text) as SearchPayload) : [];
-        } catch (parseError) {
-          console.error('Invalid search API JSON payload:', parseError, text);
-          payload = { error: `Invalid API response (${res.status})` };
-        }
+        const payload = parseSearchPayload(await res.text());
 
         if (latestRequestId.current !== requestId) return;
 
         if (!res.ok) {
           setResults([]);
-          setError(Array.isArray(payload) ? `Request failed (${res.status})` : payload.error ?? 'Search request failed');
+          setError(Array.isArray(payload) ? `Request failed (${res.status})` : payload.error ?? `Search request failed (${res.status})`);
           return;
         }
 
