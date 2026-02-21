@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
       const featuredItems = await db.template.findMany({
         where: { featured: true },
         orderBy: [{ createdAt: 'desc' }],
-        take: 8,
+        take: 3,
         include: { owner: { select: { id: true, username: true, displayName: true } } }
       });
 
@@ -142,7 +142,7 @@ export async function GET(req: NextRequest) {
 
       return db.template.findMany({
         orderBy: [{ createdAt: 'desc' }],
-        take: 8,
+        take: 3,
         include: { owner: { select: { id: true, username: true, displayName: true } } }
       });
     });

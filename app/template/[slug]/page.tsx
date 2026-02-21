@@ -15,16 +15,36 @@ type Template = {
   owner: { id: string; displayName: string; username: string };
 };
 
+type LocalProfile = {
+  name: string;
+};
+
+function readOwnerRef(): string {
+  const profileRaw = localStorage.getItem('templatedb_profile_v1');
+  if (profileRaw) {
+    try {
+      const parsed = JSON.parse(profileRaw) as Partial<LocalProfile>;
+      if (typeof parsed.name === 'string' && parsed.name.trim().length >= 2) {
+        return parsed.name.trim();
+      }
+    } catch (error) {
+      console.error('Failed to parse local profile:', error);
+    }
+  }
+
+  const legacy = localStorage.getItem('tdb-user-id') ?? '';
+  return legacy.trim();
+}
+
 export default function TemplateDetail({ params }: { params: { slug: string } }) {
   const [template, setTemplate] = useState<Template | null>(null);
-  const [userId, setUserId] = useState('');
+  const [ownerRef, setOwnerRef] = useState('');
   const [note, setNote] = useState('');
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('tdb-user-id') ?? '';
-    setUserId(stored);
+    setOwnerRef(readOwnerRef());
   }, []);
 
   useEffect(() => {
@@ -33,41 +53,42 @@ export default function TemplateDetail({ params }: { params: { slug: string } })
     async function loadTemplate() {
       setLoading(true);
       setInfo('');
-      const res = await fetch(`/api/templates/${encodeURIComponent(params.slug)}`);
-      const payload = await res.json();
-      if (!mounted) return;
 
-      if (!res.ok) {
-        setTemplate(null);
-        setInfo(payload.error ?? 'Gagal memuat template');
-        setLoading(false);
-        return;
-      }
+      try {
+        const res = await fetch(`/api/templates/${encodeURIComponent(params.slug)}`);
+        const payload = await res.json();
 
-      setTemplate(payload as Template);
-      setLoading(false);
-    }
+        if (!mounted) return;
 
-    loadTemplate().catch((error: unknown) => {
-      console.error('Template detail load failed:', error);
-      if (mounted) {
+        if (!res.ok) {
+          setTemplate(null);
+          setInfo(payload.error ?? 'Gagal memuat template');
+          setLoading(false);
+          return;
+        }
+
+        setTemplate(payload as Template);
+      } catch (error) {
+        if (!mounted) return;
+        console.error('Template detail load failed:', error);
         setTemplate(null);
         setInfo(error instanceof Error ? error.message : 'Unknown load error');
-        setLoading(false);
+      } finally {
+        if (mounted) setLoading(false);
       }
-    });
+    }
+
+    loadTemplate().catch((error) => console.error('Unexpected template load error:', error));
 
     return () => {
       mounted = false;
     };
   }, [params.slug]);
 
-
-
   const remixHref = useMemo(() => {
     if (!template) return '/contribute';
 
-    const params = new URLSearchParams({
+    const paramsForRemix = new URLSearchParams({
       title: `${template.title} Remix`,
       summary: template.summary,
       content: template.content,
@@ -75,13 +96,13 @@ export default function TemplateDetail({ params }: { params: { slug: string } })
       tags: template.tags.join(' ')
     });
 
-    return `/contribute?${params.toString()}`;
+    return `/contribute?${paramsForRemix.toString()}`;
   }, [template]);
 
   const canContribute = useMemo(() => {
-    if (!template || !userId) return false;
-    return template.ownerId !== userId;
-  }, [template, userId]);
+    if (!template || !ownerRef) return false;
+    return template.owner.username !== ownerRef && template.ownerId !== ownerRef;
+  }, [template, ownerRef]);
 
   async function copyTemplate() {
     if (!template) return;
@@ -91,13 +112,41 @@ export default function TemplateDetail({ params }: { params: { slug: string } })
 
   async function sendContribution() {
     if (!template || !canContribute) return;
+
     const res = await fetch('/api/contributions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ templateId: template.id, userId, message: note || 'Contribute request' })
+      body: JSON.stringify({
+        templateRef: template.slug,
+        contributorRef: ownerRef,
+        message: note || `Contribute request untuk ${template.title}`
+      })
     });
+
     const payload = await res.json();
     setInfo(res.ok ? 'Permintaan contribute terkirim.' : payload.error ?? 'Gagal mengirim kontribusi.');
+  }
+
+  async function quickFork() {
+    if (!template || !ownerRef) {
+      setInfo('Isi username/profile dulu untuk fork.');
+      return;
+    }
+
+    const res = await fetch(`/api/templates/${encodeURIComponent(template.slug)}/fork`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ownerRef })
+    });
+
+    const payload = await res.json();
+    if (!res.ok) {
+      setInfo(payload.error ?? 'Gagal melakukan fork template.');
+      return;
+    }
+
+    setInfo('Fork berhasil dibuat. Mengalihkan ke hasil fork...');
+    window.location.href = `/template/${payload.slug}`;
   }
 
   if (loading) {
@@ -133,36 +182,31 @@ export default function TemplateDetail({ params }: { params: { slug: string } })
         <pre className="card" style={{ whiteSpace: 'pre-wrap' }}>
           {template.content}
         </pre>
+
+        <div className="space" />
+        <input
+          value={ownerRef}
+          onChange={(e) => setOwnerRef(e.target.value)}
+          placeholder="Username kamu (untuk fork & contribute)"
+        />
+
+        <div className="space" />
         <div className="row">
           <button onClick={copyTemplate}>Copy</button>
-          <Link className="button-link subtle" href={remixHref}>Fork / Remix</Link>
+          <button onClick={quickFork}>Quick Fork</button>
+          <Link className="button-link subtle" href={remixHref}>Fork / Remix Editor</Link>
           {canContribute && <button onClick={sendContribution}>Contribute</button>}
         </div>
+
         {canContribute && (
           <>
             <div className="space" />
             <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Pesan kontribusi" />
           </>
         )}
+
         {info && <p className="muted">{info}</p>}
       </article>
-      <section className="card" style={{ marginTop: 12 }}>
-        <h4>Set User Context</h4>
-        <input
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          placeholder="Isi user id agar tombol contribute aktif saat bukan owner"
-        />
-        <div className="space" />
-        <button
-          onClick={() => {
-            localStorage.setItem('tdb-user-id', userId);
-            setInfo('User context tersimpan.');
-          }}
-        >
-          Simpan User ID
-        </button>
-      </section>
     </main>
   );
 }

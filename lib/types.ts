@@ -11,7 +11,7 @@ export const createTemplateSchema = z.object({
 });
 
 export const contributionSchema = z.object({
-  templateId: z.string().min(3),
-  userId: z.string().min(3),
+  templateRef: z.string().min(3),
+  contributorRef: z.string().min(2).max(64),
   message: z.string().min(4).max(300)
 });

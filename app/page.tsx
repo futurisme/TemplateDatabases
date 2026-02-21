@@ -13,7 +13,7 @@ async function getFeaturedTemplates(): Promise<{ items: FeaturedItem[]; error?: 
       const featured = await db.template.findMany({
         where: { featured: true },
         orderBy: [{ createdAt: 'desc' }],
-        take: 8,
+        take: 3,
         include: { owner: { select: { displayName: true } } }
       });
 
@@ -23,7 +23,7 @@ async function getFeaturedTemplates(): Promise<{ items: FeaturedItem[]; error?: 
 
       return db.template.findMany({
         orderBy: [{ createdAt: 'desc' }],
-        take: 8,
+        take: 3,
         include: { owner: { select: { displayName: true } } }
       });
     });
