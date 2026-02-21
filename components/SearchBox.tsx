@@ -23,7 +23,10 @@ const instantPool = new Map<string, SearchResult>();
 const recentKey = 'tdb_recent_searches_v1';
 const savedKey = 'tdb_saved_searches_v1';
 const filterModes: FilterType[] = ['ALL', 'CODE', 'IDEA', 'STORY', 'OTHER'];
-const sortModes: SortMode[] = ['relevance', 'newest'];
+const sortOptions: Array<{ value: SortMode; label: string; description: string }> = [
+  { value: 'relevance', label: 'Relevance', description: 'Paling relevan dengan query' },
+  { value: 'newest', label: 'Newest', description: 'Template terbaru lebih dulu' }
+];
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
@@ -103,11 +106,6 @@ function cycleFilter(current: FilterType): FilterType {
   return filterModes[nextIndex];
 }
 
-function cycleSort(current: SortMode): SortMode {
-  const nextIndex = (sortModes.indexOf(current) + 1) % sortModes.length;
-  return sortModes[nextIndex];
-}
-
 export function SearchBox() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -117,6 +115,8 @@ export function SearchBox() {
   const [filterType, setFilterType] = useState<FilterType>('ALL');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [savedSearches, setSavedSearches] = useState<string[]>([]);
+  const [isSortPanelOpen, setIsSortPanelOpen] = useState(false);
+  const sortPanelRef = useRef<HTMLDivElement | null>(null);
   const latestRequestId = useRef(0);
 
   const normalizedQuery = useMemo(() => normalizeQuery(query), [query]);
@@ -124,6 +124,28 @@ export function SearchBox() {
   useEffect(() => {
     setRecentSearches(safeReadArray(recentKey));
     setSavedSearches(safeReadArray(savedKey));
+  }, []);
+
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!sortPanelRef.current) return;
+      if (!sortPanelRef.current.contains(event.target as Node)) {
+        setIsSortPanelOpen(false);
+      }
+    };
+
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsSortPanelOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onEscape);
+    };
   }, []);
 
   useEffect(() => {
@@ -275,15 +297,39 @@ export function SearchBox() {
           >
             ◈
           </button>
-          <button
-            type="button"
-            className="mini-icon-button"
-            title={`Sort: ${sortMode}`}
-            aria-label={`Sort mode ${sortMode}. Klik untuk ganti.`}
-            onClick={() => setSortMode((current) => cycleSort(current))}
-          >
-            ↕
-          </button>
+
+          <div className="sort-menu" ref={sortPanelRef}>
+            <button
+              type="button"
+              className="sort-trigger"
+              onClick={() => setIsSortPanelOpen((open) => !open)}
+              aria-haspopup="menu"
+              aria-expanded={isSortPanelOpen}
+            >
+              Sort ▾
+            </button>
+
+            {isSortPanelOpen && (
+              <div className="sort-popover" role="menu" aria-label="Sort By">
+                <p className="sort-popover-title">Sort by</p>
+                {sortOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={option.value === sortMode ? 'sort-option active' : 'sort-option'}
+                    onClick={() => {
+                      setSortMode(option.value);
+                      setIsSortPanelOpen(false);
+                    }}
+                  >
+                    <span>{option.label}</span>
+                    <small>{option.description}</small>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button type="button" className="button-link subtle" onClick={pinSearch}>
             Save query
           </button>
