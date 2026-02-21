@@ -1,40 +1,41 @@
 import Link from 'next/link';
-import { headers } from 'next/headers';
 import { SearchBox } from '@/components/SearchBox';
 import { FeaturedTemplates, type FeaturedItem } from '@/components/FeaturedTemplates';
+import { withDb } from '@/lib/db';
+import { getPrismaAvailabilityIssue } from '@/lib/errors';
+import { featuredFallback } from '@/lib/featured-fallback';
 
 export const dynamic = 'force-dynamic';
 
-type FeaturedPayload = FeaturedItem[] | { error?: string };
-
 async function getFeaturedTemplates(): Promise<{ items: FeaturedItem[]; error?: string }> {
   try {
-    const headerStore = headers();
-    const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host');
-    const proto = headerStore.get('x-forwarded-proto') ?? 'http';
-    const baseUrl = host ? `${proto}://${host}` : process.env.NEXT_PUBLIC_BASE_URL;
+    const items = await withDb(async (db) => {
+      const featured = await db.template.findMany({
+        where: { featured: true },
+        orderBy: [{ createdAt: 'desc' }],
+        take: 8,
+        include: { owner: { select: { displayName: true } } }
+      });
 
-    if (!baseUrl) {
-      return { items: [], error: 'Featured belum tersedia.' };
-    }
+      if (featured.length > 0) {
+        return featured;
+      }
 
-    const res = await fetch(`${baseUrl}/api/templates?featured=1`, {
-      next: { revalidate: 120 }
+      return db.template.findMany({
+        orderBy: [{ createdAt: 'desc' }],
+        take: 8,
+        include: { owner: { select: { displayName: true } } }
+      });
     });
-    const text = await res.text();
-    const payload = text ? (JSON.parse(text) as FeaturedPayload) : [];
 
-    if (!res.ok) {
-      return {
-        items: [],
-        error: Array.isArray(payload) ? `Request failed (${res.status})` : payload.error ?? 'Gagal memuat featured templates'
-      };
-    }
-
-    return { items: Array.isArray(payload) ? payload : [] };
+    return { items };
   } catch (error) {
     console.error('Failed to load featured templates on server:', error);
-    return { items: [], error: 'Featured belum tersedia.' };
+    if (getPrismaAvailabilityIssue(error)) {
+      return { items: featuredFallback };
+    }
+
+    return { items: featuredFallback, error: 'Featured fallback mode aktif.' };
   }
 }
 

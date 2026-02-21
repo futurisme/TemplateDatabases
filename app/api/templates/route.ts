@@ -120,18 +120,39 @@ export async function GET(req: NextRequest) {
   const featuredOnly = req.nextUrl.searchParams.get('featured') === '1';
 
   try {
-    const data = await withDb((db) =>
-      db.template.findMany({
-        where: featuredOnly ? { featured: true } : undefined,
-        orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
-        take: featuredOnly ? 8 : 50,
+    const data = await withDb(async (db) => {
+      if (!featuredOnly) {
+        return db.template.findMany({
+          orderBy: [{ featured: 'desc' }, { createdAt: 'desc' }],
+          take: 50,
+          include: { owner: { select: { id: true, username: true, displayName: true } } }
+        });
+      }
+
+      const featuredItems = await db.template.findMany({
+        where: { featured: true },
+        orderBy: [{ createdAt: 'desc' }],
+        take: 8,
         include: { owner: { select: { id: true, username: true, displayName: true } } }
-      })
-    );
+      });
+
+      if (featuredItems.length > 0) {
+        return featuredItems;
+      }
+
+      return db.template.findMany({
+        orderBy: [{ createdAt: 'desc' }],
+        take: 8,
+        include: { owner: { select: { id: true, username: true, displayName: true } } }
+      });
+    });
 
     return NextResponse.json(data, {
       headers: {
-        'Cache-Control': featuredOnly ? 'public, s-maxage=120, stale-while-revalidate=300' : 'no-store'
+        'Cache-Control': featuredOnly ? 'public, s-maxage=120, stale-while-revalidate=300' : 'no-store',
+        ...(featuredOnly && data.length > 0 && !data.some((item) => item.featured)
+          ? { 'X-TemplateData-Source': 'database-auto-featured' }
+          : {})
       }
     });
   } catch (error) {
@@ -149,6 +170,16 @@ export async function GET(req: NextRequest) {
     }
 
     const payload = toErrorPayload(error);
+    if (featuredOnly && payload.status === 503) {
+      return NextResponse.json(featuredFallback, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+          'X-TemplateData-Source': 'fallback'
+        }
+      });
+    }
+
     return NextResponse.json({ error: payload.message }, { status: payload.status });
   }
 }
