@@ -25,6 +25,17 @@ function runCommand(command, args, options = {}) {
   });
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function parsePositiveInt(value, fallback) {
+  const parsed = Number.parseInt(value ?? '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 function hasMigrations() {
   const migrationsDir = join(process.cwd(), 'prisma', 'migrations');
   if (!existsSync(migrationsDir)) return false;
@@ -62,17 +73,37 @@ async function maybeSeed() {
   await runCommand(TSX_BIN, ['prisma/seed.ts']);
 }
 
-async function bootstrapAndStart() {
-  ensureBinaries();
-
-  const port = process.env.PORT || '8080';
-
-  console.log('[startup] Running prisma generate');
-  await runCommand(PRISMA_BIN, ['generate']);
-
+async function bootstrapDatabase() {
   await applyDatabaseSchema();
   await maybeSeed();
+}
 
+async function bootstrapDatabaseWithRetries() {
+  const maxAttempts = parsePositiveInt(process.env.DB_BOOTSTRAP_MAX_ATTEMPTS, 30);
+  const backoffMs = parsePositiveInt(process.env.DB_BOOTSTRAP_RETRY_MS, 5000);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await bootstrapDatabase();
+      console.log(`[startup] Database bootstrap completed on attempt ${attempt}/${maxAttempts}`);
+      return;
+    } catch (error) {
+      const printable = error instanceof Error ? error.message : String(error);
+      const isLast = attempt >= maxAttempts;
+
+      if (isLast) {
+        console.error(`[startup] Database bootstrap failed after ${maxAttempts} attempts: ${printable}`);
+        throw error;
+      }
+
+      console.warn(`[startup] Database bootstrap attempt ${attempt}/${maxAttempts} failed: ${printable}`);
+      console.warn(`[startup] Retrying database bootstrap in ${backoffMs}ms`);
+      await sleep(backoffMs);
+    }
+  }
+}
+
+function startNextApp(port) {
   console.log(`[startup] Starting Next.js on port ${port}`);
   const app = spawn(NEXT_BIN, ['start', '-p', port], { stdio: 'inherit', shell: false });
 
@@ -89,6 +120,31 @@ async function bootstrapAndStart() {
       return;
     }
     process.exit(code ?? 0);
+  });
+
+  return app;
+}
+
+async function bootstrapAndStart() {
+  ensureBinaries();
+
+  const port = process.env.PORT || '8080';
+  const strictBootstrap = process.env.DB_BOOTSTRAP_STRICT === 'true';
+
+  console.log('[startup] Running prisma generate');
+  await runCommand(PRISMA_BIN, ['generate']);
+
+  if (strictBootstrap) {
+    console.log('[startup] DB_BOOTSTRAP_STRICT=true -> blocking startup until database bootstrap succeeds');
+    await bootstrapDatabaseWithRetries();
+    startNextApp(port);
+    return;
+  }
+
+  startNextApp(port);
+
+  bootstrapDatabaseWithRetries().catch((error) => {
+    console.error('[startup] Database bootstrap exhausted retries (app kept running):', error);
   });
 }
 
