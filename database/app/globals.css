@@ -1,3 +1,4 @@
+@import '../lib/fadhilweblib/styles/theme.css';
 :root {
   color-scheme: light;
   --bg: #f4f8ff;
