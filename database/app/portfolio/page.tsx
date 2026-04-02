@@ -38,17 +38,17 @@ const projects = [
   }
 ] as const;
 
-export default function PortfolioTestingPage() {
+export default function PortfolioPage() {
   return (
     <ThemeScope theme="portfolio">
       <Container maxWidth="xl" style={{ padding: '2rem 1rem' }}>
         <Stack gap="lg">
           <Section
             title="Portfolio Testing"
-            description="Halaman ini sengaja dipisahkan. Akses hanya lewat URL langsung /Portfolio."
+            description="Halaman portfolio untuk validasi antarmuka. Akses utama lewat /portfolio."
             actions={
               <ActionGroup>
-                <StatusChip value="Hidden Route" tone="brand" />
+                <StatusChip value="Portfolio Route" tone="brand" />
                 <StatusChip value="FadhilWebLib" tone="info" />
               </ActionGroup>
             }
@@ -59,7 +59,7 @@ export default function PortfolioTestingPage() {
           <Grid columns={3} gap="md">
             <Metric label="Projects" value={String(projects.length)} description="Testing scope" tone="brand" />
             <Metric label="UI Library" value="100%" description="FadhilWebLib components" tone="success" />
-            <Metric label="Visibility" value="Private URL" description="No public navigation link" tone="warning" />
+            <Metric label="Visibility" value="Direct URL" description="No public navigation link" tone="warning" />
           </Grid>
 
           <Surface tone="neutral" style={{ padding: '1rem' }}>
@@ -83,8 +83,8 @@ export default function PortfolioTestingPage() {
           <Surface tone="neutral" style={{ padding: '1rem' }}>
             <KeyValueList
               items={[
-                { label: 'Route', value: '/Portfolio' },
-                { label: 'Access', value: 'Direct URL only' },
+                { label: 'Route', value: '/portfolio' },
+                { label: 'Compatibility', value: '/Portfolio redirects' },
                 { label: 'Dependency', value: 'database/lib/fadhilweblib' }
               ]}
             />
