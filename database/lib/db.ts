@@ -78,8 +78,26 @@ export function getDb(): PrismaClient {
 }
 
 export async function withDb<T>(operation: (db: PrismaClient, source: string) => Promise<T>): Promise<T> {
+  if (process.env.DB_DISABLED === 'true') {
+    throw new AppError(
+      'Database sedang dinonaktifkan (DB_DISABLED=true). Endpoint ini berjalan dalam mode fallback tanpa akses database.',
+      503
+    );
+  }
+
   const state = getState();
-  const configs = resolveDatabaseConfigs();
+  let configs: ResolvedDbConfig[];
+  try {
+    configs = resolveDatabaseConfigs();
+  } catch (error) {
+    if (error instanceof AppError && error.message.includes('Missing required environment variable: DATABASE_URL')) {
+      throw new AppError(
+        'Database dinonaktifkan karena DATABASE_URL belum dikonfigurasi. Jalankan mode fallback/non-database untuk endpoint yang mendukung.',
+        503
+      );
+    }
+    throw error;
+  }
 
   const prioritized: ResolvedDbConfig[] = [];
   const healthyCandidates = configs.filter((item) => !state.unhealthyUrls.has(item.url));

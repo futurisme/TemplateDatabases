@@ -49,6 +49,19 @@ function ensureBinaries() {
   }
 }
 
+function isDatabaseBootstrapDisabled() {
+  if (process.env.DB_BOOTSTRAP_DISABLED === 'true') {
+    return { disabled: true, reason: 'DB_BOOTSTRAP_DISABLED=true' };
+  }
+
+  const databaseUrl = process.env.DATABASE_URL?.trim();
+  if (!databaseUrl) {
+    return { disabled: true, reason: 'DATABASE_URL is not set' };
+  }
+
+  return { disabled: false, reason: '' };
+}
+
 async function applyDatabaseSchema() {
   if (hasMigrations()) {
     console.log('[startup] Applying migrations (prisma migrate deploy)');
@@ -130,9 +143,16 @@ async function bootstrapAndStart() {
 
   const port = process.env.PORT || '8080';
   const strictBootstrap = process.env.DB_BOOTSTRAP_STRICT === 'true';
+  const bootstrapMode = isDatabaseBootstrapDisabled();
 
   console.log('[startup] Running prisma generate');
   await runCommand(PRISMA_BIN, ['generate']);
+
+  if (bootstrapMode.disabled) {
+    console.warn(`[startup] Database bootstrap disabled (${bootstrapMode.reason}). Starting app without DB bootstrap.`);
+    startNextApp(port);
+    return;
+  }
 
   if (strictBootstrap) {
     console.log('[startup] DB_BOOTSTRAP_STRICT=true -> blocking startup until database bootstrap succeeds');
