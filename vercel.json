@@ -1,4 +1,10 @@
 {
-  "version": 2,
-  "builds": [{ "src": "database/package.json", "use": "@vercel/next" }]
+  "framework": "nextjs",
+  "installCommand": "cd database && npm ci",
+  "buildCommand": "cd database && npm run build",
+  "devCommand": "cd database && npm run dev",
+  "rewrites": [
+    { "source": "/Portfolio", "destination": "/portfolio" },
+    { "source": "/portfolio", "destination": "/portfolio/index.html" }
+  ]
 }
