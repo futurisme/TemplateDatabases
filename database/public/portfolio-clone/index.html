@@ -144,7 +144,7 @@
     }
 
     .shell {
-      width: min(100%, 1020px);
+      width: min(100%, 1180px);
       margin: 0 auto;
       display: grid;
       grid-template-columns: 0.95fr 1.05fr;
@@ -223,7 +223,8 @@
     .project-card,
     .image-card {
       display: grid;
-      gap: 6px;
+      gap: 8px;
+      padding: 6px;
     }
 
     .stack-header {
@@ -287,12 +288,14 @@
 
     .project-image,
     .asset-image {
-      width: 100%;
+      width: calc(100% + 12px);
       height: auto;
       aspect-ratio: 16 / 9;
-      object-fit: contain;
+      object-fit: cover;
       object-position: center;
       display: block;
+      margin-left: -6px;
+      margin-right: -6px;
       border-radius: 8px;
       border: 1px solid var(--line);
       background: #f8f7f5;
