@@ -149,3 +149,8 @@
     transition-duration: 1ms;
   }
 }
+
+.root[data-bleed='true'] {
+  padding: 0;
+  overflow: visible;
+}

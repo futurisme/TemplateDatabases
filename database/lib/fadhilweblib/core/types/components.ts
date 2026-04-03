@@ -21,6 +21,7 @@ export interface SurfaceRecipeLogic {
   tone?: Tone;
   density?: Density;
   variant?: 'solid' | 'soft' | 'outline' | 'elevated';
+  bleed?: boolean;
 }
 
 export interface SurfaceProps extends React.HTMLAttributes<HTMLElement> {
@@ -28,6 +29,7 @@ export interface SurfaceProps extends React.HTMLAttributes<HTMLElement> {
   tone?: Tone;
   density?: Density;
   variant?: 'solid' | 'soft' | 'outline' | 'elevated';
+  bleed?: boolean;
   children?: React.ReactNode;
   syntax?: FadhilWebSyntax;
   stateSyntax?: FadhilWebStateSyntax;

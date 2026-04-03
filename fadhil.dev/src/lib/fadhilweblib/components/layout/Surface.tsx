@@ -9,6 +9,7 @@ export function Surface({
   tone,
   density,
   variant,
+  bleed,
   syntax,
   stateSyntax,
   recipe,
@@ -23,6 +24,7 @@ export function Surface({
   const finalTone = rootSyntax.semantics.tone ?? tone ?? recipe?.logic?.tone ?? 'neutral';
   const finalDensity = rootSyntax.semantics.density ?? density ?? recipe?.logic?.density ?? 'comfortable';
   const finalVariant = variant ?? recipe?.logic?.variant ?? 'solid';
+  const finalBleed = bleed ?? recipe?.logic?.bleed ?? false;
   const rootStyle = createStateStyleVariables(rootSyntax.style, resolvedStateSyntax);
 
   return (
@@ -36,6 +38,7 @@ export function Surface({
       data-tone={finalTone}
       data-density={finalDensity}
       data-variant={finalVariant}
+      data-bleed={finalBleed ? 'true' : 'false'}
       data-state={rootSyntax.logic.current ? 'current' : rootSyntax.logic.open ? 'open' : rootSyntax.logic.loading ? 'loading' : rootSyntax.logic.disabled ? 'disabled' : 'idle'}
       data-disabled={rootSyntax.logic.disabled ? 'true' : 'false'}
       data-loading={rootSyntax.logic.loading ? 'true' : 'false'}
