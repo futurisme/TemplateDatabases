@@ -7,11 +7,17 @@
       "use": "@vercel/next"
     }
   ],
-  "redirects": [
+  "routes": [
     {
-      "source": "/Portfolio",
-      "destination": "/portfolio",
-      "permanent": true
+      "src": "/Portfolio",
+      "status": 308,
+      "headers": {
+        "Location": "/portfolio"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "database/$1"
     }
   ]
 }
