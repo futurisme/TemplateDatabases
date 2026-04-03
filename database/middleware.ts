@@ -8,11 +8,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/portfolio', request.url), 308);
   }
 
-  if (pathname === '/portfolio') {
-    return NextResponse.rewrite(new URL('/portfolio-clone/index.html', request.url));
+  if (pathname === '/testing') {
+    return NextResponse.redirect(new URL('/portfolio', request.url), 308);
   }
 
-  if (pathname === '/testing') {
+  if (pathname === '/portfolio') {
     return NextResponse.rewrite(new URL('/portfolio-clone/testing/index.html', request.url));
   }
 
