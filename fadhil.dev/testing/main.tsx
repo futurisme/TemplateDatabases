@@ -44,10 +44,10 @@ const tools = [
   ['Toolkit', 'Lemonade'],
 ] as const;
 const projects = [
-  ['MindMapper', 'https://MindMapper.qzz.io', '/images/Mindmapper.jpg', 'Built: Vercel · Railway · PostgreSQL · DB'],
-  ['WebWorlds', 'https://webworlds.vercel.app', '/images/WebWorlds.jpg', 'Built: Vercel · Railway · PostgreSQL · DB'],
-  ['TemplateDatabases', 'https://templatedatabases.vercel.app/', '/images/TemplateDatabase.jpg', 'Built: Vercel · Railway · PostgreSQL · DB'],
-  ['Fadhil Profile', 'https://fadhil.qzz.io/', '/images/WebWorlds.jpg', 'Built: Vercel'],
+  ['MindMapper', 'https://MindMapper.qzz.io', '/public/images/Mindmapper.jpg', 'Built: Vercel · Railway · PostgreSQL · DB'],
+  ['WebWorlds', 'https://webworlds.vercel.app', '/public/images/WebWorlds.jpg', 'Built: Vercel · Railway · PostgreSQL · DB'],
+  ['TemplateDatabases', 'https://templatedatabases.vercel.app/', '/public/images/TemplateDatabase.jpg', 'Built: Vercel · Railway · PostgreSQL · DB'],
+  ['Fadhil Profile', 'https://fadhil.qzz.io/', '/public/images/Fadhil.jpeg', 'Built: Vercel'],
 ] as const;
 
 const futuristicPalette = {
@@ -132,7 +132,7 @@ function ProjectCard({ title, url, image, stack, mediaProfile }: { title: string
   return (
     <Surface
       tone="neutral"
-      style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', display: 'grid', gap: '0', gridTemplateRows: 'auto minmax(0, 1fr) auto', alignContent: 'start' }}
+      style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', display: 'grid', gap: '0.35rem', gridTemplateRows: 'auto minmax(0, 1fr) auto', alignContent: 'start', padding: '0.2rem' }}
       data-project-card
     >
       <StatusChip
@@ -146,7 +146,7 @@ function ProjectCard({ title, url, image, stack, mediaProfile }: { title: string
         tone="neutral"
         density="compact"
         bleed
-        style={{ width: 'calc(100% + 0.44rem)', maxWidth: 'calc(100% + 0.44rem)', boxSizing: 'border-box', marginInline: '-0.22rem', marginBlock: '0', padding: '0', borderRadius: '9px', overflow: 'hidden', lineHeight: 0, aspectRatio: '16 / 9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', marginInline: '0', marginBlock: '0', padding: '0', borderRadius: '10px', overflow: 'hidden', lineHeight: 0, aspectRatio: '16 / 9', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: '1px dashed color-mix(in oklab, var(--fwlb-border-strong) 82%, transparent)', outlineOffset: '-2px' }}
       >
         <img
           data-src={resolvedImage}
@@ -156,7 +156,7 @@ function ProjectCard({ title, url, image, stack, mediaProfile }: { title: string
           decoding="async"
           width={1920}
           height={1080}
-          style={{ display: 'block', width: '101.75%', height: '101.75%', inlineSize: '101.75%', maxWidth: 'none', borderRadius: '9px', aspectRatio: '16 / 9', objectFit: 'cover', objectPosition: '50% 50%', background: 'rgba(2, 6, 23, 0.74)', border: '0.08px solid color-mix(in oklab, var(--fwlb-border-soft) 95%, transparent)' }}
+          style={{ display: 'block', width: '100%', height: '100%', inlineSize: '100%', maxWidth: '100%', borderRadius: '10px', aspectRatio: '16 / 9', objectFit: 'cover', objectPosition: '50% 50%', background: 'rgba(2, 6, 23, 0.74)', border: '1px solid color-mix(in oklab, var(--fwlb-border-soft) 88%, transparent)' }}
         />
       </Surface>
       <Button as="a" href={url} target="_blank" rel="noopener noreferrer" tone="brand" size="sm">Open {title}</Button>
@@ -165,7 +165,7 @@ function ProjectCard({ title, url, image, stack, mediaProfile }: { title: string
 }
 
 const projectGrid = (mediaProfile: SmartMediaProfile | null, keyPrefix = '') => (
-  <Grid minItemWidth="min(252px, 100%)" gap="xs" itemJustify="stretch" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', gap: '0.03rem' }}>
+  <Grid minItemWidth="min(280px, 100%)" gap="sm" itemJustify="stretch" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', gap: '0.42rem' }}>
     {projects.map(([title, url, image, stack]) => (
       <ProjectCard key={`${keyPrefix}${title}`} title={title} url={url} image={image} stack={stack} mediaProfile={mediaProfile} />
     ))}
