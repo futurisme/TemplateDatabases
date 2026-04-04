@@ -15,7 +15,7 @@
   width: min(100%, 40rem);
   min-width: 0;
   border: 1px solid var(--fwlb-border-soft);
-  border-radius: calc(var(--fwlb-radius-panel) + 0.1rem);
+  border-radius: var(--fwlb-radius-dialog, calc(var(--fwlb-radius-panel) + 0.1rem));
   background: var(--fwlb-surface-elevated);
   box-shadow: var(--fwlb-shadow-floating);
   color: var(--fwlb-text-strong);
@@ -51,7 +51,7 @@
 .drawerPanel {
   width: min(100vw, var(--fwlb-drawer-width, 26rem));
   height: 100%;
-  border-radius: 0;
+  border-radius: var(--fwlb-radius-drawer, 0);
 }
 
 .header {
@@ -88,7 +88,7 @@
   width: 2.2rem;
   height: 2.2rem;
   border: 1px solid var(--fwlb-border-soft);
-  border-radius: 999px;
+  border-radius: var(--fwlb-radius-overlay-close, var(--fwlb-radius-pill, 999px));
   background: var(--fwlb-surface-muted);
   color: var(--fwlb-text-soft);
   cursor: pointer;

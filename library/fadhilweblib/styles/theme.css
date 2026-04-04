@@ -10,9 +10,46 @@
   --fwlb-space-5: 1.5rem;
   --fwlb-space-6: 2rem;
 
-  --fwlb-radius-control: 0.875rem;
-  --fwlb-radius-panel: 1.25rem;
-  --fwlb-radius-pill: 999px;
+
+  --fwlb-radius-2xs: 0.18rem;
+  --fwlb-radius-xs: 0.38rem;
+  --fwlb-radius-sm: 0.72rem;
+  --fwlb-radius-md: 0.875rem;
+  --fwlb-radius-lg: 1.25rem;
+  --fwlb-radius-xl: 1.6rem;
+  --fwlb-radius-full: 999px;
+
+  --fwlb-radius-control: var(--fwlb-radius-md);
+  --fwlb-radius-panel: var(--fwlb-radius-lg);
+  --fwlb-radius-pill: var(--fwlb-radius-full);
+
+  --fwlb-radius-surface: var(--fwlb-radius-panel);
+  --fwlb-radius-section: var(--fwlb-radius-panel);
+  --fwlb-radius-panel-component: var(--fwlb-radius-panel);
+  --fwlb-radius-collapsible-panel: var(--fwlb-radius-panel);
+  --fwlb-radius-chip: var(--fwlb-radius-pill);
+  --fwlb-radius-button: var(--fwlb-radius-control);
+  --fwlb-radius-icon-button: var(--fwlb-radius-pill);
+  --fwlb-radius-control-input: var(--fwlb-radius-control);
+  --fwlb-radius-choice: var(--fwlb-radius-xs);
+  --fwlb-radius-choice-indicator: var(--fwlb-radius-2xs);
+  --fwlb-radius-switch-track: var(--fwlb-radius-pill);
+  --fwlb-radius-switch-thumb: var(--fwlb-radius-pill);
+  --fwlb-radius-range-track: var(--fwlb-radius-pill);
+  --fwlb-radius-range-fill: var(--fwlb-radius-pill);
+  --fwlb-radius-range-thumb: var(--fwlb-radius-pill);
+  --fwlb-radius-tabs-list: var(--fwlb-radius-control);
+  --fwlb-radius-tabs-trigger: var(--fwlb-radius-pill);
+  --fwlb-radius-tabs-panel: calc(var(--fwlb-radius-control) + 0.25rem);
+  --fwlb-radius-dialog: calc(var(--fwlb-radius-panel) + 0.1rem);
+  --fwlb-radius-drawer: 0;
+  --fwlb-radius-overlay-close: var(--fwlb-radius-pill);
+  --fwlb-radius-feedback-empty: var(--fwlb-radius-panel);
+  --fwlb-radius-feedback-empty-visual: var(--fwlb-radius-pill);
+  --fwlb-radius-feedback-skeleton: 0.8rem;
+  --fwlb-radius-feedback-progress: var(--fwlb-radius-pill);
+  --fwlb-radius-feedback-metric: var(--fwlb-radius-panel);
+  --fwlb-radius-feedback-metric-compact: var(--fwlb-radius-sm);
 
   --fwlb-surface-base: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
   --fwlb-surface-elevated: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(241, 245, 249, 0.98));

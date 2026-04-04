@@ -33,7 +33,7 @@
   width: 1.15rem;
   height: 1.15rem;
   border: 1px solid var(--fwlb-border-strong);
-  border-radius: 0.38rem;
+  border-radius: var(--fwlb-radius-choice, 0.38rem);
   background: var(--fwlb-control-bg);
   box-shadow: var(--fwlb-control-shadow);
   transition:
@@ -46,7 +46,7 @@
   content: '';
   width: 0.52rem;
   height: 0.52rem;
-  border-radius: 0.18rem;
+  border-radius: var(--fwlb-radius-choice-indicator, 0.18rem);
   background: var(--fwlb-tone-brand-bg);
   transform: scale(0);
   transition: transform 140ms ease;
@@ -66,7 +66,7 @@
   width: 2.5rem;
   height: 1.35rem;
   border: 1px solid var(--fwlb-border-strong);
-  border-radius: 999px;
+  border-radius: var(--fwlb-radius-switch-track, var(--fwlb-radius-pill, 999px));
   background: var(--fwlb-surface-sunken);
   transition:
     background 160ms ease,
@@ -79,7 +79,7 @@
   left: 0.14rem;
   width: 0.95rem;
   height: 0.95rem;
-  border-radius: 999px;
+  border-radius: var(--fwlb-radius-switch-thumb, var(--fwlb-radius-pill, 999px));
   background: var(--fwlb-tone-neutral-bg);
   box-shadow: var(--fwlb-shadow-soft);
   transition: transform 160ms ease;

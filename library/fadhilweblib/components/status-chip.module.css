@@ -10,7 +10,7 @@
   --fwlb-current-border-color: var(--fwlb-base-border-color, var(--fwlb-status-tone-border));
   --fwlb-current-border-width: var(--fwlb-base-border-width, 1px);
   --fwlb-current-border-style: var(--fwlb-base-border-style, solid);
-  --fwlb-current-border-radius: var(--fwlb-base-border-radius, 999px);
+  --fwlb-current-border-radius: var(--fwlb-base-border-radius, var(--fwlb-radius-chip, var(--fwlb-radius-pill, 999px)));
   --fwlb-current-box-shadow: var(--fwlb-base-box-shadow, none);
   --fwlb-current-opacity: var(--fwlb-base-opacity, 1);
   --fwlb-current-transform: var(--fwlb-base-transform, none);

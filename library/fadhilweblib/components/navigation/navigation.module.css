@@ -50,7 +50,7 @@
   min-width: 0;
   padding: 0.7rem 0.95rem;
   border: 1px solid var(--fwlb-border-soft);
-  border-radius: var(--fwlb-radius-control);
+  border-radius: var(--fwlb-radius-tabs-list, var(--fwlb-radius-control));
   background: var(--fwlb-surface-muted);
   color: var(--fwlb-text-soft);
   font-size: 0.88rem;
@@ -101,7 +101,7 @@
   min-width: 1.2rem;
   height: 1.2rem;
   padding-inline: 0.32rem;
-  border-radius: 999px;
+  border-radius: var(--fwlb-radius-tabs-trigger, var(--fwlb-radius-pill, 999px));
   background: var(--fwlb-surface-sunken);
   font-size: 0.7rem;
 }
@@ -117,7 +117,7 @@
   min-width: 0;
   padding: var(--fwlb-space-1);
   border: 1px solid var(--fwlb-border-soft);
-  border-radius: calc(var(--fwlb-radius-control) + 0.25rem);
+  border-radius: var(--fwlb-radius-tabs-panel, calc(var(--fwlb-radius-control) + 0.25rem));
   background: var(--fwlb-surface-muted);
 }
 

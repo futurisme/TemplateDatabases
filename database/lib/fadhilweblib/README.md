@@ -256,6 +256,48 @@ const heroRecipe = defineRecipe({
 - The base theme stays neutral.
 - Theme presets provide direction without changing component contracts.
 
+## Corner/Rounded Control Model
+
+`fadhilweblib` now exposes a full radius token ladder + per-component corner tokens through CSS variables, so users can force square UI, soft UI, or mixed radii without editing component code.
+
+Global scale tokens:
+- `--fwlb-radius-2xs`, `--fwlb-radius-xs`, `--fwlb-radius-sm`, `--fwlb-radius-md`, `--fwlb-radius-lg`, `--fwlb-radius-xl`, `--fwlb-radius-full`
+
+Semantic defaults:
+- `--fwlb-radius-control`, `--fwlb-radius-panel`, `--fwlb-radius-pill`
+
+Per-component overrides (examples):
+- `--fwlb-radius-button`, `--fwlb-radius-icon-button`
+- `--fwlb-radius-control-input`, `--fwlb-radius-choice`, `--fwlb-radius-choice-indicator`
+- `--fwlb-radius-switch-track`, `--fwlb-radius-switch-thumb`
+- `--fwlb-radius-range-track`, `--fwlb-radius-range-thumb`
+- `--fwlb-radius-tabs-list`, `--fwlb-radius-tabs-trigger`, `--fwlb-radius-tabs-panel`
+- `--fwlb-radius-dialog`, `--fwlb-radius-drawer`, `--fwlb-radius-overlay-close`
+- `--fwlb-radius-surface`, `--fwlb-radius-section`, `--fwlb-radius-panel-component`, `--fwlb-radius-collapsible-panel`, `--fwlb-radius-chip`
+- `--fwlb-radius-feedback-empty`, `--fwlb-radius-feedback-empty-visual`, `--fwlb-radius-feedback-skeleton`, `--fwlb-radius-feedback-progress`, `--fwlb-radius-feedback-metric`, `--fwlb-radius-feedback-metric-compact`
+
+Example (full square mode):
+```css
+[data-fwlb-theme] {
+  --fwlb-radius-2xs: 0;
+  --fwlb-radius-xs: 0;
+  --fwlb-radius-sm: 0;
+  --fwlb-radius-md: 0;
+  --fwlb-radius-lg: 0;
+  --fwlb-radius-xl: 0;
+  --fwlb-radius-full: 0;
+}
+```
+
+Example (hybrid mode):
+```css
+[data-fwlb-theme='portfolio'] {
+  --fwlb-radius-button: 0.35rem;
+  --fwlb-radius-tabs-trigger: 999px;
+  --fwlb-radius-dialog: 1.8rem;
+}
+```
+
 ## Full Reference
 
 See [SYNTAX.md](./SYNTAX.md) for the complete grouped namespace reference, flat key catalogue, escape hatch rules, and authoring guidance.

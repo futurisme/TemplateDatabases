@@ -11,7 +11,7 @@
   --fwlb-current-border-color: var(--fwlb-base-border-color, var(--fwlb-surface-tone-border));
   --fwlb-current-border-width: var(--fwlb-base-border-width, 1px);
   --fwlb-current-border-style: var(--fwlb-base-border-style, solid);
-  --fwlb-current-border-radius: var(--fwlb-base-border-radius, var(--fwlb-radius-panel));
+  --fwlb-current-border-radius: var(--fwlb-base-border-radius, var(--fwlb-radius-surface, var(--fwlb-radius-panel)));
   --fwlb-current-box-shadow: var(--fwlb-base-box-shadow, var(--fwlb-surface-tone-shadow));
   --fwlb-current-opacity: var(--fwlb-base-opacity, 1);
   --fwlb-current-transform: var(--fwlb-base-transform, none);
@@ -148,9 +148,4 @@
   .root {
     transition-duration: 1ms;
   }
-}
-
-.root[data-bleed='true'] {
-  padding: 0;
-  overflow: visible;
 }

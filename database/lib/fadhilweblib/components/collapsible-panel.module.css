@@ -10,7 +10,7 @@
   --fwlb-current-border-color: var(--fwlb-base-border-color, var(--fwlb-collapsible-tone-border));
   --fwlb-current-border-width: var(--fwlb-base-border-width, 1px);
   --fwlb-current-border-style: var(--fwlb-base-border-style, solid);
-  --fwlb-current-border-radius: var(--fwlb-base-border-radius, var(--fwlb-radius-panel));
+  --fwlb-current-border-radius: var(--fwlb-base-border-radius, var(--fwlb-radius-collapsible-panel, var(--fwlb-radius-panel)));
   --fwlb-current-box-shadow: var(--fwlb-base-box-shadow, var(--fwlb-shadow-panel));
   --fwlb-current-opacity: var(--fwlb-base-opacity, 1);
   --fwlb-current-transform: var(--fwlb-base-transform, none);
@@ -198,7 +198,7 @@
   width: 1.85rem;
   height: 1.85rem;
   border: 1px solid var(--fwlb-border-soft);
-  border-radius: 999px;
+  border-radius: var(--fwlb-radius-pill, 999px);
   background: var(--fwlb-surface-muted);
   font-size: 0.95rem;
   line-height: 1;

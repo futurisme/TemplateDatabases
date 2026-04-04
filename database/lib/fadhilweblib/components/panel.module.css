@@ -10,7 +10,7 @@
   --fwlb-current-border-color: var(--fwlb-base-border-color, var(--fwlb-panel-tone-border));
   --fwlb-current-border-width: var(--fwlb-base-border-width, 1px);
   --fwlb-current-border-style: var(--fwlb-base-border-style, solid);
-  --fwlb-current-border-radius: var(--fwlb-base-border-radius, var(--fwlb-radius-panel));
+  --fwlb-current-border-radius: var(--fwlb-base-border-radius, var(--fwlb-radius-panel-component, var(--fwlb-radius-panel)));
   --fwlb-current-box-shadow: var(--fwlb-base-box-shadow, var(--fwlb-panel-tone-box-shadow));
   --fwlb-current-opacity: var(--fwlb-base-opacity, 1);
   --fwlb-current-transform: var(--fwlb-base-transform, none);
@@ -86,7 +86,7 @@
   --fwlb-current-border-color: var(--fwlb-hover-border-color, var(--fwlb-base-border-color, var(--fwlb-panel-tone-border)));
   --fwlb-current-border-width: var(--fwlb-hover-border-width, var(--fwlb-base-border-width, 1px));
   --fwlb-current-border-style: var(--fwlb-hover-border-style, var(--fwlb-base-border-style, solid));
-  --fwlb-current-border-radius: var(--fwlb-hover-border-radius, var(--fwlb-base-border-radius, var(--fwlb-radius-panel)));
+  --fwlb-current-border-radius: var(--fwlb-hover-border-radius, var(--fwlb-base-border-radius, var(--fwlb-radius-panel-component, var(--fwlb-radius-panel))));
   --fwlb-current-box-shadow: var(--fwlb-hover-box-shadow, var(--fwlb-base-box-shadow, var(--fwlb-panel-tone-box-shadow)));
   --fwlb-current-opacity: var(--fwlb-hover-opacity, var(--fwlb-base-opacity, 1));
   --fwlb-current-transform: var(--fwlb-hover-transform, var(--fwlb-base-transform, none));
